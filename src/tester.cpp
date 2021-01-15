@@ -74,7 +74,6 @@ List updatePi(List beta, arma::mat X, arma::vec a0, arma::mat ajk, int tmax){
   int K = beta.size();
   arma::vec first(K);
   arma::vec second(K);
-  
   List pimat(tmax); 
   
   for(int t = 0; t < tmax; ++t){
