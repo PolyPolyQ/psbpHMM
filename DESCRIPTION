@@ -1,0 +1,14 @@
+Package: psbpHMM
+Type: Package
+Title: Fit PSBP iHMM 
+Version: 1.0
+Date: 2021-01-07
+Author: Lauren Hoskovec
+Maintainer: Lauren Hoskovec <lvheck@rams.colostate.edu>
+Description: This package fits PSPB iHMMs. 
+License: GPL (>= 2)
+Encoding: UTF-8
+Imports: Rcpp (>= 1.0.5)
+LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 7.1.1
+
