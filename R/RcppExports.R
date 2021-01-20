@@ -53,10 +53,6 @@ updatePi <- function(beta, X, a0, ajk, tmax) {
     .Call(`_psbpHMM_updatePi`, beta, X, a0, ajk, tmax)
 }
 
-updatePi2 <- function(beta, X, a0, ajk, tmax) {
-    .Call(`_psbpHMM_updatePi2`, beta, X, a0, ajk, tmax)
-}
-
 returnPi <- function() {
     .Call(`_psbpHMM_returnPi`)
 }
@@ -67,14 +63,6 @@ mvndensity <- function(y, mu, Sigma, d) {
 
 upZ <- function(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d) {
     .Call(`_psbpHMM_upZ`, stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d)
-}
-
-fun10 <- function(piz, u, stateList, K, jprime, jprobs) {
-    .Call(`_psbpHMM_fun10`, piz, u, stateList, K, jprime, jprobs)
-}
-
-testClear <- function() {
-    .Call(`_psbpHMM_testClear`)
 }
 
 csample_num <- function(x, size, replace, prob = as.numeric( c())) {

@@ -66,67 +66,9 @@ arma::mat invMat(arma::mat x) {
   return( inv(x));
 }
 
-// [[Rcpp::export]]
-List updatePi(List beta, arma::mat X, arma::vec a0, arma::mat ajk, int tmax){
-  
-  //step by step return each piece 
-  int K = beta.size();
-  arma::vec first(K);
-  arma::vec second(K);
-  List pimat(tmax); 
-  
-  for(int t = 0; t < tmax; ++t){
-    arma::mat x = X.row(t);
-    if(t == 0){
-      for(int k = 0; k < K; ++k){
-        arma::mat xb = as<arma::rowvec>(beta[k])*x.t();
-        arma::mat y = a0[k] + xb; 
-        first[k] = R::pnorm(as_scalar(y), 0, 1, 1, 0);
-        if (k > 0) second[k] = 1-first[k-1];
-      }
-      second[0] = 1;
-      arma::vec third = cumprod(second);
-      arma::vec fourth(K+1);
-      double s = 0;
-      for(int i = 0; i < K; i++){
-        fourth[i] = first[i]*third[i];
-        s = s + fourth[i];
-      }
-      //double last = sum(fourth);
-      fourth[K]=1-s; // index starts at 0 
-      pimat[t] = fourth;
-    }else {
-      arma::mat Z;
-      for(int j = 0; j < K; ++j){
-        for(int k = 0; k < K; ++k){
-          arma::mat xb = as<arma::rowvec>(beta[k])*x.t();
-          double a = ajk(k,j);
-          arma::mat y = a + xb; 
-          first[k] = R::pnorm(as_scalar(y), 0, 1, 1, 0);
-          if (k > 0) second[k] = 1-first[k-1];
-        }
-        second[0] = 1;
-        arma::vec third = cumprod(second);
-        arma::vec fourth(K+1);
-        double s = 0;
-        for(int i = 0; i < K; i++){
-          fourth[i] = first[i]*third[i];
-          s = s + fourth[i];
-        }
-        //double last = sum(fourth);
-        fourth[K]=1-s; // index starts a 0 
-        // fourth is the jth row
-        Z = join_rows(Z, fourth);
-        pimat[t] = Z.t();
-      }
-    }
-  }
-  return(pimat);
-}
-
 
 // [[Rcpp::export]]
-List updatePi2(List beta, List X, arma::vec a0, arma::mat ajk, int tmax){
+List updatePi(List beta, List X, arma::vec a0, arma::mat ajk, int tmax){
   
   // X is a List for each i 
   int n = X.size(); // number of people
@@ -201,23 +143,14 @@ double returnPi(){
 
 // [[Rcpp::export]]
 double mvndensity(arma::vec y, arma::vec mu, arma::mat Sigma, double d){
-  
-  // det(Sigma)^(-1/2)
   arma::vec x1; 
   double x2 = det(Sigma); 
   x1 = x2; 
   arma::vec x3 = pow( x1, -0.5 );
-  // dmnvorm 
   arma::vec x4 = pow( (2*M_PI), (-d/2))*x3*exp(-0.5 * (y - mu).t() * inv(Sigma) * (y - mu));
-  
   double x5 = as_scalar(x4);
-  
-  
   return(x5);
-  
 }
-
-
 
 // [[Rcpp::export]]
 List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nudf, List detRstar, List piz,
@@ -253,8 +186,6 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
   double logR; 
   double newState; 
   double loglik; 
-  
-  // more initialization 
   int s1; 
   int jindex; 
   int s2; 
@@ -274,13 +205,10 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
   int idx2; 
   int kstar; 
   
-  
-  // for i in 1:n
   for(int i = 0; i < n; ++i){
     sli = stateList[i];
     yi = as<arma::mat>(y[i]);
-    zt.set_size(tmax); // change to tmax, put zt in z(i), return z 
-    // new stuff
+    zt.set_size(tmax); 
     pizi = piz[i]; 
     ui = as<arma::vec>(u[i]);
     
@@ -323,23 +251,18 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
     
     // the rest of the time points 
     for(t = 1; t < tmax; ++t){
-      // new stuff
       pizit = as<arma::mat>(pizi[t]); 
       uit = ui[t]; 
-      
       yit = (yi.row(t)).t(); // y_it 
       jprime = kprime; // previous possible states
       jprobs = tkProbs; // previous state probabilities 
       kprime = sli[t]; // update kprime, current possible states
       nprime = kprime.length(); 
       logTKprobs.set_size(nprime); // reset 
-      
       slit = sli[t-1];
       
       // log likelihood for all current possible states kprime 
-      // for each k we sum over previous possible states for logsumprobs 
       for(idx = 0; idx < nprime; ++idx){
-        
         // reset whichK
         whichKtemp = as<arma::vec>(whichK); 
         whichKtemp.set_size(0);
@@ -348,8 +271,7 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
         allProbstemp = as<arma::vec>(allProbs); 
         allProbstemp.set_size(0); 
         allProbs = wrap(allProbstemp); 
-        
-        
+        // for each k we sum over previous possible states for logsumprobs 
         k = kprime[idx]; 
         // because the indexing starts at 0 for mu and Sigma 
         if(k <= K){
@@ -365,18 +287,15 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
           logR = detRi[t]; 
           loglik = logStuff - ((nudf + 1)/2)*logR; // loglik
         }
-        
-        // new stuff 
         pizitk = pizit.col(k-1); 
         idx2 = 0; 
         for(kstar = 0; kstar < K; ++kstar){
           if(pizitk[kstar] >= uit) {
-            whichK.push_back(kstar+1); // minus 1 bc of c++
+            whichK.push_back(kstar+1); // indexing 
             idx2++; 
           }
         }
         prevK = intersect(whichK, slit);
-        
         for(s1 = 0; s1 < jprime.length(); s1++){
           jindex = jprime[s1];
           for(s2 = 0; s2 < prevK.length(); s2++){
@@ -386,10 +305,7 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
             }
           }
         }
-        
         logsumall = log(sum(allProbs)); 
-        // end new stuff 
-        
         logTKprobs[idx] = loglik + logsumall;
       }
       maxlog = max(logTKprobs);
@@ -405,113 +321,10 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
         zt[t] = state;
       }
     }
-    
     z[i] = zt; 
   }
-  
   return(z); 
 }
-
-// [[Rcpp::export]]
-double fun10(List piz, List u, List stateList, int K, IntegerVector jprime, NumericVector jprobs){
-  
-  int i = 0; 
-  int t = 1; 
-  int k = 1; 
-  int s1; 
-  int jindex; 
-  int s2; 
-  double probj;
-  
-  List pizi; 
-  arma::mat pizit; 
-  arma::vec pizitk; 
-  arma::vec ui; 
-  double uit; 
-  
-  List sli; 
-  IntegerVector slit;
-  IntegerVector prevK; 
-  
-  IntegerVector whichK(0);
-  arma::vec whichKtemp;
-  NumericVector allProbs(0);
-  arma::vec allProbstemp; 
-  
-  double logsumall; 
-  
-  
-  pizi = piz[i]; 
-  ui = as<arma::vec>(u[i]);
-  
-  pizit = as<arma::mat>(pizi[t]); 
-  uit = ui[t]; 
-  
-  pizitk = pizit.col(k); 
-
-
-  
-  
-  int idx = 0; 
-  for(int kstar = 0; kstar < K; ++kstar){
-    if(pizitk[kstar] >= uit) {
-      whichK.push_back(kstar+1); // minus 1 bc of c++
-      idx++; 
-    }
-  }
-  
-  sli = stateList[i];
-  slit = sli[t-1];
-  prevK = intersect(whichK, slit);
-  
-  
-  whichKtemp = as<arma::vec>(whichK); 
-  whichKtemp.set_size(0);
-  whichK = wrap(whichKtemp); 
-  
-
-  for(s1 = 0; s1 < jprime.length(); s1++){
-    jindex = jprime[s1];
-    // is j in prevK
-    for(s2 = 0; s2 < prevK.length(); s2++){
-      if(prevK[s2]==jindex){
-        probj = jprobs[s1];
-        allProbs.push_back(probj);
-      }
-    }
-  }
-  
-  //allProbstemp = as<arma::vec>(allProbs); 
-  //allProbstemp.set_size(0); 
-  //allProbs = wrap(allProbstemp); 
-  
-  
-  logsumall = log(sum(allProbs)); 
-  
-  return(logsumall); 
-  
-  
-  
-  
-}
-
-// [[Rcpp::export]]
-NumericVector testClear(){
-  
-  NumericVector x(0); 
-  arma::vec y = as<arma::vec>(x); 
-  y.set_size(0); 
-  x = wrap(y); 
-  //NumericVector z = wrap(y); 
-  //x = z; 
-  
-  //z.push_back(3);
-  //z.push_back(4);
-  return(x); 
-  
-}
-
-
 
 // [[Rcpp::export]]
 NumericVector csample_num( NumericVector x,

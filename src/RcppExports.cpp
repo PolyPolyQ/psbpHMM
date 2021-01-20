@@ -141,23 +141,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // updatePi
-List updatePi(List beta, arma::mat X, arma::vec a0, arma::mat ajk, int tmax);
+List updatePi(List beta, List X, arma::vec a0, arma::mat ajk, int tmax);
 RcppExport SEXP _psbpHMM_updatePi(SEXP betaSEXP, SEXP XSEXP, SEXP a0SEXP, SEXP ajkSEXP, SEXP tmaxSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type beta(betaSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type a0(a0SEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type ajk(ajkSEXP);
-    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
-    rcpp_result_gen = Rcpp::wrap(updatePi(beta, X, a0, ajk, tmax));
-    return rcpp_result_gen;
-END_RCPP
-}
-// updatePi2
-List updatePi2(List beta, List X, arma::vec a0, arma::mat ajk, int tmax);
-RcppExport SEXP _psbpHMM_updatePi2(SEXP betaSEXP, SEXP XSEXP, SEXP a0SEXP, SEXP ajkSEXP, SEXP tmaxSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -166,7 +151,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::vec >::type a0(a0SEXP);
     Rcpp::traits::input_parameter< arma::mat >::type ajk(ajkSEXP);
     Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
-    rcpp_result_gen = Rcpp::wrap(updatePi2(beta, X, a0, ajk, tmax));
+    rcpp_result_gen = Rcpp::wrap(updatePi(beta, X, a0, ajk, tmax));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -214,32 +199,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
     Rcpp::traits::input_parameter< double >::type d(dSEXP);
     rcpp_result_gen = Rcpp::wrap(upZ(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d));
-    return rcpp_result_gen;
-END_RCPP
-}
-// fun10
-double fun10(List piz, List u, List stateList, int K, IntegerVector jprime, NumericVector jprobs);
-RcppExport SEXP _psbpHMM_fun10(SEXP pizSEXP, SEXP uSEXP, SEXP stateListSEXP, SEXP KSEXP, SEXP jprimeSEXP, SEXP jprobsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type piz(pizSEXP);
-    Rcpp::traits::input_parameter< List >::type u(uSEXP);
-    Rcpp::traits::input_parameter< List >::type stateList(stateListSEXP);
-    Rcpp::traits::input_parameter< int >::type K(KSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type jprime(jprimeSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type jprobs(jprobsSEXP);
-    rcpp_result_gen = Rcpp::wrap(fun10(piz, u, stateList, K, jprime, jprobs));
-    return rcpp_result_gen;
-END_RCPP
-}
-// testClear
-NumericVector testClear();
-RcppExport SEXP _psbpHMM_testClear() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(testClear());
     return rcpp_result_gen;
 END_RCPP
 }
@@ -308,12 +267,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_mhDecomp", (DL_FUNC) &_psbpHMM_mhDecomp, 2},
     {"_psbpHMM_invMat", (DL_FUNC) &_psbpHMM_invMat, 1},
     {"_psbpHMM_updatePi", (DL_FUNC) &_psbpHMM_updatePi, 5},
-    {"_psbpHMM_updatePi2", (DL_FUNC) &_psbpHMM_updatePi2, 5},
     {"_psbpHMM_returnPi", (DL_FUNC) &_psbpHMM_returnPi, 0},
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},
-    {"_psbpHMM_fun10", (DL_FUNC) &_psbpHMM_fun10, 6},
-    {"_psbpHMM_testClear", (DL_FUNC) &_psbpHMM_testClear, 0},
     {"_psbpHMM_csample_num", (DL_FUNC) &_psbpHMM_csample_num, 4},
     {"_psbpHMM_csample_int", (DL_FUNC) &_psbpHMM_csample_int, 4},
     {"_psbpHMM_a3", (DL_FUNC) &_psbpHMM_a3, 1},
