@@ -56,6 +56,8 @@ det(Sigma[[k]])
 upZ(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff, 
     nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max, K = K, n = n, d = p)
 
+
+
 logsum <- function(x) {
   log(sum(exp(x - max(x)))) + max(x)
 }
@@ -66,6 +68,33 @@ csample_num(x, size = 1, replace = FALSE, prob = prob)
 csample_int(x, 1, 0, prob)
 
 (2*pi)^(-p/2)*det(Sigma[[k]])^(-0.5)*exp(-0.5 * (y[[i]][t,] - mu[[k]]) %*% solve(Sigma[[k]]) %*% t(y[[i]][t,] - mu[[k]]))
-#pow( (2*M_PI), (-d/2))*temp3*exp(-0.5 * (yit - muK).t() * inv(sigK) * (yit - muK))
+
+# test7 functions
+i = 1
+t = 2
+k = 2
+
+pi.z[[i]][[t]][,k]
+
+prevK = intersect(which(pi.z[[i]][[t]][,k] >= u[[i]][t]),state.list[[i]][[t-1]]) # intersect and which 
+which(pi.z[[i]][[t]][,k] >= u[[i]][t])
+prevK = c(1,3)
+j.prime
+
+ints = which(prevK %in% j.prime); ints # which and %in% "sugar"?
+alljprobs = j.probs[ints]
+log.sumprobs = log(sum(alljprobs))
+
+fun10(pi.z, u, state.list, K, j.prime, j.probs)
+
+# grab the jprobs for the prevK in jprime 
+
+xtest = c(12,3,4)
+testClear()
+
+
+
+
+
 
 

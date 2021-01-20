@@ -73,18 +73,25 @@ for(i in 1:n){
       
       # four new lines
       # these are the previous possible states for current possible state k 
-      prevK = intersect(which(pi.z[[i]][[t]][,k] >= u[[i]][t]),state.list[[i]][[t-1]]) # intersect and which 
-      ints = which(prevK %in% j.prime) # which and %in% "sugar"?
-      alljprobs = j.probs[ints]
+      prevK = intersect(which(pi.z[[i]][[t]][,k] >= u[[i]][t]),state.list[[i]][[t-1]]); prevK # intersect and which 
+      # if(length(prevK) < length(j.prime)){
+      #   print(t)
+      #   print(k)
+      #   stop()
+      # }
+      ints = which(j.prime %in% prevK); ints  
+      alljprobs = j.probs[ints]; alljprobs
       log.sumprobs = log(sum(alljprobs))
       
       
-      
+      # log likelihood 
       if(k<=K){
         loglik_k = dmvn(y[[i]][t,], mu[[k]], cholSigma[[k]], log = TRUE, isChol = TRUE)
       }else{
         loglik_k = log.stuff-((nu.df+1)/2)*log(detR.star[[i]][t])
       }
+      
+      
       log.tk.probs[idx] = loglik_k + log.sumprobs
     }
     

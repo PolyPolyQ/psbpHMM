@@ -217,6 +217,32 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fun10
+double fun10(List piz, List u, List stateList, int K, IntegerVector jprime, NumericVector jprobs);
+RcppExport SEXP _psbpHMM_fun10(SEXP pizSEXP, SEXP uSEXP, SEXP stateListSEXP, SEXP KSEXP, SEXP jprimeSEXP, SEXP jprobsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type piz(pizSEXP);
+    Rcpp::traits::input_parameter< List >::type u(uSEXP);
+    Rcpp::traits::input_parameter< List >::type stateList(stateListSEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type jprime(jprimeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type jprobs(jprobsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fun10(piz, u, stateList, K, jprime, jprobs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// testClear
+NumericVector testClear();
+RcppExport SEXP _psbpHMM_testClear() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(testClear());
+    return rcpp_result_gen;
+END_RCPP
+}
 // csample_num
 NumericVector csample_num(NumericVector x, int size, bool replace, NumericVector prob);
 RcppExport SEXP _psbpHMM_csample_num(SEXP xSEXP, SEXP sizeSEXP, SEXP replaceSEXP, SEXP probSEXP) {
@@ -286,6 +312,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_returnPi", (DL_FUNC) &_psbpHMM_returnPi, 0},
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},
+    {"_psbpHMM_fun10", (DL_FUNC) &_psbpHMM_fun10, 6},
+    {"_psbpHMM_testClear", (DL_FUNC) &_psbpHMM_testClear, 0},
     {"_psbpHMM_csample_num", (DL_FUNC) &_psbpHMM_csample_num, 4},
     {"_psbpHMM_csample_int", (DL_FUNC) &_psbpHMM_csample_int, 4},
     {"_psbpHMM_a3", (DL_FUNC) &_psbpHMM_a3, 1},
