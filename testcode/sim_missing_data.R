@@ -16,6 +16,7 @@ library(tmvmixnorm)
 library(parallel)
 library(mvnfast)
 library(rlist)
+library(truncnorm)
 
 #############
 ### Setup ###
@@ -29,7 +30,7 @@ set.seed(22*simnum)
 ### Simulate Data ###
 #####################
 
-n = 5 # sampling days
+n = 50 # sampling days
 t.max <- 288
 lodmis <- 0.05
 marmis <- 0.05
@@ -52,6 +53,11 @@ q <- ncol(X[[1]])
 
 
 p <- 3 
+
+
+## repeated measures test 
+rmlist = c(rep(1,5), rep(2,5), rep(3,6), rep(4,5), rep(5,5), rep(6,5),
+            rep(7,9), rep(8, 5), rep(9,5))
 
 #################################
 ### Set Priors and Parameters ###

@@ -1,9 +1,17 @@
-
-
-
-
-### update W with or without repeated measures 
-
+#' Update W with or without repeated measures 
+#'
+#' @param t time point
+#' @param l state
+#' @param i time series
+#' @param alpha.0k alpha0k
+#' @param X covariates
+#' @param beta.k overall beta
+#' @param beta.sk subject specific beta
+#' @param alpha.jk alphajk
+#' @param z hidden states 
+#'
+#' @return sampled value for W 
+#'
 updateW <- function(t,l,i, alpha.0k, X, beta.k, beta.sk = NULL, alpha.jk, z){
   
   if(!is.null(beta.sk)){

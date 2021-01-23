@@ -1,4 +1,4 @@
-#' Fit Markov PSBP model with repeated measures (subject-specific betas)
+#' Fit mc-iHMM with covariates and/or repeated measures 
 #'
 #' @param niter number of iterations
 #' @param nburn burn-in
@@ -30,32 +30,28 @@
 #' @return list of results 
 #' @export
 #'
-#' 
-
-# which i's are the repeated measures?
-
 fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
                         priors=NULL, K.start=NULL, z.true=NULL, lod=NULL,
                         mu.true=NULL, missing = FALSE, 
                         tau2 = 0.1, a.tune = 10, b.tune = 1,
                         resK = FALSE, eta.star = NULL, len.imp = 1){
-  
-  
-  # list of Rcpp functions 
-  # mhDecomp
-  # invMat
-  # updatePi
-  # mvndensity
-  # upZ
-  
-  
-  
-  
-  
-  # beta for each i and an overall beta 
-  # X for each i (or not but it makes this more robust)
-  
-  # change updates based on missing vs. complete data 
+
+## build package and test data analysis on this 
+## can still make some functions faster 
+## update state list   
+## update W
+## update alpha_jk
+
+####################################################################################
+### Function 1: mc-iHMM ###
+### fits the cyclical model for multple time series ###
+### allows for different X_i for each i to permit covariates or different times ###
+### all time series are the same length ### 
+### allows for repeated meeasures if rmlist is given ###
+####################################################################################
+
+
+  ### X is a list with a matrix for each i ### 
   if(missing){
     algorithm = "MH"
     SigmaPrior = "wishart"
@@ -63,6 +59,8 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     algorithm = "Gibbs"
     SigmaPrior = "non-informative"
   }
+  
+  if(is.null(rmlist)) beta.sk = NULL
   
   #####################
   ### Initial Setup ###
@@ -89,10 +87,8 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     z.true <- list(z.true)
   }
   
-  
   # X is a list 
   q <- ncol(X[[1]])
-
   
   ##############
   ### Priors ###
@@ -105,30 +101,39 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
   if(is.null(priors$mu.alpha)) priors$mu.alpha <- 0 # fixed mean parameter prior on intercepts alpha.jk
   if(is.null(priors$m0)) priors$m0 <- 0 # fixed mean on m.alpha, prior mean for alpha.jj # higher so self-transition prob is higher
   if(is.null(priors$v0)) priors$v0 <- 1 # fixed variance on m.alpha, prior mean for alpha.jj
-  # beta_ik
-  if(is.null(priors$mu.beta)) priors$mu.beta <- rep(0, q) # basis weight prior mean 
-  if(is.null(priors$Sigma.beta)) priors$Sigma.beta <- diag(q) # basis weight prior variance
-  if(!is.null(X)) priors$SigInv.beta <- chol2inv(chol(priors$Sigma.beta)) # inverse of Sigma.beta, precision
-  # beta0 
-  if(is.null(priors$mu.beta0)) priors$mu.beta0 <- rep(0, q) # basis weight prior mean 
-  if(is.null(priors$Sigma.beta0)) priors$Sigma.beta0 <- diag(q) # basis weight prior variance
-  if(!is.null(X)) priors$SigInv.beta0 <- chol2inv(chol(priors$Sigma.beta0)) # inverse of Sigma.beta, precision
+  # beta
+  if(is.null(priors$mu.beta)) priors$mu.beta <- rep(0, q) 
+  if(is.null(priors$Sigma.beta)) priors$Sigma.beta <- diag(q) 
+  if(!is.null(X)) priors$SigInv.beta <- invMat(priors$Sigma.beta) # cppFunction
+  
+  
+  # subject specific beta if repeated measures 
+  if(!is.null(rmlist)){
+    # beta_sk
+    if(is.null(priors$mu.betaS)) priors$mu.betaS <- rep(0, q) 
+    if(is.null(priors$Sigma.betaS)) priors$Sigma.betaS <- diag(q) 
+    if(!is.null(X)) priors$SigInv.betaS <- invMat(priors$Sigma.betaS) 
+   # shrinkage prior on random effects
+    if(is.null(priors$a.kappa)) priors$a.kappa <- 1 # shape for kap2inv 
+    if(is.null(priors$b.kappa)) priors$b.kappa <- 1 # rate for kap2inv 
+  }
+  
+  
+  
   # hyperiors on alpha
   if(is.null(priors$a1)) priors$a1 <- 1 # shape for sig2inv.alpha
   if(is.null(priors$b1)) priors$b1 <- 1 # rate for sig2inv.alpha
   if(is.null(priors$a2)) priors$a2 <- 1 # shape for vinv.alpha
   if(is.null(priors$b2)) priors$b2 <- 1 # rate for vinv.alpha
-  # hyperpriors on kap2inv
-  if(is.null(priors$a.kappa)) priors$a.kappa <- 1 # shape for kap2inv (shrinkage prior on random effects)
-  if(is.null(priors$b.kappa)) priors$b.kappa <- 1 # rate for kap2inv 
   
   if(SigmaPrior == "wishart"){
+    # missing data case (MH udpates)
     if(is.null(priors$R)) priors$R <- diag(p) # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k
     if(is.null(priors$nu)) priors$nu <- p+2 # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k, nu > p+1
     nu.df <- priors$nu # 
     R.mat <- priors$R 
   }else if(SigmaPrior == "non-informative"){
-    # if SigmaPrior = "ni", the half-t prior on Sigma_k
+    # complete data case (Gibbs updates)
     if(is.null(priors$bj)) priors$bj <- rep(1, p) # Huang and Wand advise 10e5
     if(is.null(priors$nu)) priors$nu <- 2 # Huang and Wand advise 2, p+4 for so the variance exists
     nu.df <- priors$nu + p - 1 # Huang and Wand, prior df 
@@ -137,7 +142,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     R.mat <- 2*priors$nu*diag(aj.inv) 
     # we model aj.inv with gamma(shape = 1/2, rate = 1/(b_j^2))
   }
-  # concentration on Sigma_k for NIW 
+  
   if(is.null(priors$lambda)) priors$lambda <- 1 
   
   #############################
@@ -232,98 +237,67 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       which.lams <- unlist(sapply(2:p, FUN = function(j) rep(j,j-1))) # which lams to use for each al 
       L[[k]] <- diag(p)
       lowerTriangle(L[[k]]) <- al[[k]]
-      Sigma[[k]] <- solve(L[[k]])%*%D[[k]]%*%t(solve(L[[k]])) # Sigma[[k]]
-      mu[[k]] <- rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
+      
+      # make a C++ function for solve 
+      #Sigma[[k]] <- solve(L[[k]])%*%D[[k]]%*%t(solve(L[[k]])) 
+      Sigma[[k]] <- mhDecomp(L[[k]], D[[k]]) # cppFunction
+      mu[[k]] <- mvnfast::rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
     }else{
-      Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = solve(R.mat)),p,p)))
+      Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = invMat(R.mat)),p,p)))
       mu[[k]] <- rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
     }
   }
   
-  # K only 
+  
+  # alpha 
   alpha.0k <- rep(0, K) # initial state intercept
   alpha.jk <- list() # state intercepts
   m.alpha <- priors$m0 # mean on alpha.jj
   sig2inv.alpha <- priors$a1/priors$a2 # precision on alpha.jk
   vinv.alpha <- priors$b1/priors$b2 # precision on alpha.jj
   
-  # shrinkage prior on random effects 
-  kap2inv <- 1
-  
-  # K only 
-  ### repeated measures: subject-specific betas 
-  # relist beta for all n 
-  # so beta is the same for the same subjects but different across subjects 
-  # and beta.k is length n where each one is a list of K 4x1 matrices 
-  n.sub = length(unique(rmlist)) # number of subjects
-  beta.ik = list()
-  for(i in 1:n.sub){
-    beta.ik[[i]] = list()
-    for(k in 1:K){
-      beta.ik[[i]][[k]] <- matrix(rmvn(1, priors$mu.beta, (1/kap2inv)*priors$Sigma.beta), nrow = q, ncol = 1) # length q
-    }
-  }
-  beta.k = list()
-  for(i in 1:n){
-    beta.k[[i]] = beta.ik[[rmlist[i]]]
-  }
-  
-  ### overall beta0 
-  beta0 = list()
-  for(k in 1:K){
-    beta0[[k]] <- matrix(rmvn(1, priors$mu.beta0, priors$Sigma.beta0), nrow = q, ncol = 1) # length q
-  }
-  
+  # beta
+  beta.k <- list() # regression coefficients
   for(k in 1:(K)){
     alpha.jk[[k]] <- rnorm(K, priors$mu.alpha, sqrt(1/sig2inv.alpha))
     alpha.jk[[k]][k] <- priors$m0
+    beta.k[[k]] <- matrix(rmvn(1, priors$mu.beta, priors$Sigma.beta), nrow = q, ncol = 1) # length q
   }
   
+  # beta_s random effects 
+  if(!is.null(rmlist)){
+    kap2inv <- 1
+    n.sub = length(unique(rmlist)) # number of unique subjects
+    beta.ik = list()
+    for(i in 1:n.sub){
+      beta.ik[[i]] = list()
+      for(k in 1:K){
+        beta.ik[[i]][[k]] <- matrix(rmvn(1, priors$mu.beta, (1/kap2inv)*priors$Sigma.beta), nrow = q, ncol = 1) # length q
+      }
+    }
+    beta.sk = list()
+    for(i in 1:n){
+      beta.sk[[i]] = beta.ik[[rmlist[i]]]
+    }
+  }
+  # beta.k is beta.sk 
   
+  ################################
+  ### update transition matrix ###
+  ################################
   
-  #################
-  ### Functions ###
-  #################
+  ajkmat = matrix(unlist(alpha.jk), nrow = K, ncol = K)
   
-  
-  # beta0 is the overall beta
-  
-  # takes in Xi = X[[i]] and beta.ik = beta.k[[i]]
-  fun1 <- function(Xi, beta0, beta.ik){
-    first1 = sapply(1:K, FUN = function(k) pnorm(alpha.0k[k] + crossprod(Xi[1,],beta0[[k]]) + crossprod(Xi[1,],beta.ik[[k]])))
-    second1 = sapply(1:(K-1), FUN = function(k) 1-pnorm(alpha.0k[k] + crossprod(Xi[1,],beta0[[k]]) + crossprod(Xi[1,],beta.ik[[k]])))
-    prod1 = c(1, cumprod(second1))
-    return(c(first1*prod1, 1 - sum(first1*prod1)))
+  if(!is.null(rmlist)){
+    pi.z = updatePi_rm(beta = beta.k, beta_sk = beta.sk, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+  }else{
+    pi.z = updatePi(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
   }
   
-  # takes in t, Xi = X[[i]], beta.ik = beta.k[[i]]
-  fun2 <- function(t, Xi, beta0, beta.ik){
-    t(sapply(1:(K), FUN = function(j){
-      first = sapply(1:K, FUN = function(k) pnorm(alpha.jk[[j]][k] + crossprod(Xi[t,],beta0[[k]]) + crossprod(Xi[t,],beta.ik[[k]])))
-      second = sapply(1:(K-1), FUN = function(k) 1-pnorm(alpha.jk[[j]][k] + crossprod(Xi[t,],beta0[[k]]) + crossprod(Xi[t,],beta.ik[[k]])))
-      prod2 = c(1, cumprod(second))
-      return(c(first*prod2, 1 - sum(first*prod2))) 
-    }))
-  }
+  ################################################
+  ### fixed values for new state probabilities ###
+  ################################################
   
-  # takes in t, Xi = X[[i]], and beta.ik = beta.k[[i]]
-  uppi <- function(t, Xi, beta.k, beta.sk){
-    if(t == 1) return(fun1(Xi, beta.k, beta.sk))
-    else return(fun2(t, Xi, beta.k, beta.sk))
-  }
-  
-  #################
-  ### update pi ###
-  #################
-  
-  # transition probability of going from state j to state k in the current trajectory at time t for individual i 
-  pi.z <- mclapply(1:n, FUN = function(i){
-    mclapply(1:t.max, FUN = function(t){
-      uppi(t, X[[i]], beta.k, beta.sk[[i]])
-    })
-  })
-  
-  # fixed values for new state probabilities 
   gampp <- mgamma(nu = nu.df, p = p)
   # fixed for "wish", starting value for "ni" because R.mat will change with each iteration as aj.inv changes
   # if "ni" then need to update detR.star and log.stuff each iteration
@@ -376,20 +350,25 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
   s.imp <- 1
   
   beta.save <- list()
-  beta0.save <- list()
   
   ###############
   ### Sampler ###
   ###############
-  
+  start.time = Sys.time()
   for(s in 1:niter){
     
-    #if(s %% 25 == 0) print(paste("iteration", s))
+    #####################
+    ### initial stuff ### ### done 
+    #####################
+    
+    if(s %% 10 == 0) print(paste("iteration", s))
+    #start.time1 <- Sys.time()
     z.prev <- list()
     z.prev <- mclapply(1:n, FUN=function(i) return(z[[i]]))
     
+    
     ################
-    ### update u ### 
+    ### update u ### ### done 
     ################
     
     u <- list()
@@ -404,8 +383,10 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     }
     
     #############################################
-    ### update the possible states for each t ###
+    ### update the possible states for each t ###  ### done
     #############################################
+    
+    # this is slow: write this is C++
     
     state.list <- list()
     # state.list is a list of states that belong to some possible trajectory for each time point
@@ -414,6 +395,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       for.list <- list()
       for.list[[1]] <- which(pi.z[[i]][[1]] >= u[[i]][1])
       for(t in 2:t.max){
+        
         for.list[[t]] <- sort(unique(unlist(lapply(intersect(for.list[[t-1]], 1:K),
                                                    FUN = function(k) which(pi.z[[i]][[t]][k,] >= u[[i]][t])))))
       }
@@ -429,27 +411,17 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       })
     }
     
-    ###########################
-    ### Determine t minus 1 ### 
-    ###########################
+    ######################
+    ### Sample Z: Rcpp ### 
+    ######################
     
-    detzAll <- mclapply(1:n, FUN = function(i){
-      detZminus1(i = i, state.list.i = state.list[[i]], pi.z = pi.z[[i]], u.i = u[[i]], t.max = t.max)
+    z1 = upZ(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff, 
+             nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max, K = K, n = n, d = p)
+    
+    z <- lapply(1:n, FUN = function(i){
+      z = as.numeric(z1[[i]])
     })
-    
-    ################
-    ### Sample Z ### 
-    ################
-    
-    cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
-    K <- length(unique(unlist(z)))
-    
-    # only the joint NIW option 
-    z <- mclapply(1:n, FUN = function(i) {
-      updateZ(i=i, y.i=y[[i]], mu=mu, cholSigma=cholSigma, detR.stari=detR.star[[i]],
-              nu.df=nu.df, K=K, log.stuff=log.stuff, t.max=t.max, 
-              detz = detzAll[[i]], state.list.i = state.list[[i]])
-    })
+  
     
     #########################
     ### new state fillers ### 
@@ -467,11 +439,14 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
         alNew <- unlist(al.listNew); alNew # for j = 2 to p
         LNew <- diag(p)
         lowerTriangle(LNew) <- alNew; LNew
-        SigmaNew <- solve(LNew)%*%DNew%*%t(solve(LNew)) # Sigma[[k]]
+        
+        SigmaNew <- mhDecomp(LNew, DNew) # cppFunction
+        
+        #SigmaNew <- solve(LNew)%*%DNew%*%t(solve(LNew)) # Sigma[[k]]
         cholSigmaNew <- chol(SigmaNew)
         muNew <- rmvn(1, priors$mu0, (1/priors$lambda)*SigmaNew)
       }else if(algorithm == "Gibbs"){
-        SigmaNew <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = solve(R.mat)),p,p)))
+        SigmaNew <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = invMat(R.mat)),p,p)))
         muNew <- rmvn(1, priors$mu0, (1/priors$lambda)*SigmaNew)
       }
       
@@ -490,19 +465,19 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       }
       alpha.jk[[K+1]] <- rnorm(K+1, priors$mu.alpha, sqrt(1/sig2inv.alpha))
       alpha.jk[[K+1]][K+1] <- priors$m0
+      beta.k[[K+1]] <- matrix(rmvn(1, priors$mu.beta, priors$Sigma.beta), nrow = q, ncol = 1) # length q
       
       # repeated measures for beta 
-      beta.K.new = list()
-      for(i in 1:n.sub){
-        beta.K.new[[i]] = matrix(rmvn(1, priors$mu.beta, (1/kap2inv)*priors$Sigma.beta), nrow = q, ncol = 1)
+      if(!is.null(rmlist)){
+        beta.K.new = list()
+        for(i in 1:n.sub){
+          beta.K.new[[i]] = matrix(rmvn(1, priors$mu.betaS, (1/kap2inv)*priors$Sigma.betaS), nrow = q, ncol = 1)
+        }
+        for(i in 1:n){
+          beta.sk[[i]][[K+1]] = beta.K.new[[rmlist[i]]]
+        }
       }
-      for(i in 1:n){
-        beta.k[[i]][[K+1]] = beta.K.new[[rmlist[i]]]
-      }
-      
-      # overall beta 
-      beta0[[K+1]] <- matrix(rmvn(1, priors$mu.beta0, priors$Sigma.beta0), nrow = q, ncol = 1) # length q
-      
+  
       EnterNew <- TRUE # indicator that we entered into a new state this round 
     }else{
       EnterNew <- FALSE # didn't go into a new state 
@@ -519,14 +494,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     zu <- sort(unique(unlist(z))) # z.unique (old labels for current states to grab from) 
     
     alpha.new <- list()
-    
     beta.new <- list()
-    for(i in 1:n){
-      beta.new[[i]] = list()
-    }
-    
-    
-    beta0.new <- list()
     mu.new <- list()
     Sigma.new <- list()
     al.new <- list()
@@ -534,17 +502,25 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     L.new <- list()
     D.new <- list()
     
+    if(!is.null(rmlist)){
+      betaS.new <- list()
+      for(i in 1:n){
+        betaS.new[[i]] = list()
+      }
+    }
+    
+    
     rj <- 1
     for(k in zu){ # 
       alpha.new[[rj]] <- alpha.jk[[k]][zu]
+      beta.new[[rj]] <- beta.k[[k]]
       mu.new[[rj]] <- mu[[k]]
       Sigma.new[[rj]] <- Sigma[[k]]
-      beta0.new[[rj]] <- beta0[[k]]
-      
-      for(i in 1:n){
-        beta.new[[i]][[rj]] = beta.k[[i]][[k]]
+      if(!is.null(rmlist)){
+        for(i in 1:n){
+          betaS.new[[i]][[rj]] = beta.sk[[i]][[k]]
+        }
       }
-      
       if(algorithm == "MH"){
         al.new[[rj]] <- al[[k]]
         lams.new[[rj]] <- lams[[k]]
@@ -556,7 +532,8 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     
     alpha.jk <- alpha.new
     beta.k <- beta.new
-    beta0 <- beta0.new
+    if(!is.null(rmlist)) beta.sk <- betaS.new
+    
     z <- z.new
     Sigma <- Sigma.new
     mu <- mu.new
@@ -595,7 +572,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
           M <- R.mat + (nkk.tilde-1)*cov(yk) 
         }
         Sigma_nk <- M + (priors$lambda*nkk.tilde)/(nkk.tilde + priors$lambda)*tcrossprod(ybark - priors$mu0) 
-        Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1,df=nu_nk, Sigma=chol2inv(chol(Sigma_nk))),p,p)))
+        Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1,df=nu_nk, Sigma=invMat(Sigma_nk))),p,p))
         mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
         
       }else if(algorithm == "MH"){
@@ -616,7 +593,10 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
               
               al.star[j] <- a.star; al.star
               lowerTriangle(L.star) <- al.star; L.star
-              SigmaStar <- solve(L.star)%*%D[[k]]%*%t(solve(L.star)); SigmaStar # function of a.star
+              
+              SigmaStar <- mhDecomp(L.star, D[[k]]) # cppFunction
+              
+              #SigmaStar <- solve(L.star)%*%D[[k]]%*%t(solve(L.star)); SigmaStar # function of a.star
               
               # likelihoods
               da.curr <- sum(dmvn(yk, mu = mu[[k]], sigma = cholSigma[[k]], log = TRUE, isChol = TRUE)) +
@@ -652,7 +632,10 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
           D.star <- D[[k]]
           lam.star <- 1/rgamma(1, a.tune, rate = b.tune); lam.star # proposed value 
           D.star[j,j] <- lam.star
-          SigmaStar <- solve(L[[k]])%*%D.star%*%t(solve(L[[k]]))
+          
+          SigmaStar <- mhDecomp(L[[k]], D.star) # cppFunction
+          
+          #SigmaStar <- solve(L[[k]])%*%D.star%*%t(solve(L[[k]]))
           
           # likelihoods
           dlam.curr <- sum(dmvn(yk, mu = mu[[k]], sigma = cholSigma[[k]], log = TRUE, isChol = TRUE)) + 
@@ -684,9 +667,9 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
         mu_nk <- (priors$lambda*priors$mu0 + nkk.tilde*ybark)/(priors$lambda+nkk.tilde) 
         lambda_nk <- priors$lambda + nkk.tilde 
         mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
-        
       } # end if MH 
     } # end sample theta  
+    
     
     ######################################################################
     ### if SigmaPrior == "NI": Update aj.inv, detR.star and log.stuff  ###
@@ -696,7 +679,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       # then update aj.inv for j = 1 to p 
       shape.aj <- (K*(priors$nu+p-1)+1)/2
       sigmajj <- lapply(1:K, FUN = function(k){
-        diag(chol2inv(chol(Sigma[[k]])))
+        diag(invMat(Sigma[[k]])) # cppFunction
       }) # diagonal elements of each Sigma.Inv_k
       diags <- numeric()
       for(k in 1:K){
@@ -715,7 +698,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
         })})
       
       log.stuff <- (p/2)*log(priors$lambda/(pi*(priors$lambda+1)))+log(gampp)+(nu.df/2)*log(det(R.mat))
-    }  
+    }
     
     ################
     ### update W ### 
@@ -724,15 +707,17 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     # for each t, w.z gives me a VECTOR based on the previous time point and values up to the current time point
     # so each w.z[[t]] should be a VECTOR of length z_t
     
+    ### this is slow: C++
     w.z <- list()
     for(i in 1:n){
       w.z[[i]] <- list()
       for(t in 1:t.max){
-        w.z[[i]][[t]] <- sapply(1:z[[i]][t], FUN = function(l) upWdiff(t=t, l=l, i=i, alpha.0k=alpha.0k, X=X[[i]], 
-                                                                       beta0 = beta0,
-                                                                       beta.k=beta.k[[i]], alpha.jk=alpha.jk, z=z))
+        w.z[[i]][[t]] <- sapply(1:z[[i]][t], FUN = function(l) updateW(t=t, l=l, i=i, alpha.0k=alpha.0k, X=X[[i]], 
+                                                                       beta.k=beta.k, beta.sk = beta.sk[[i]], 
+                                                                       alpha.jk=alpha.jk, z=z))
       }
     }
+    
     
     #######################
     ### update alpha.0k ### ### done 
@@ -754,7 +739,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     # sum over w-beta for the i's s.t z_i1 >= k for each k 
     wminusbeta <- sapply(1:K, FUN = function(k) {
       if(any(which.i[[k]] != 0)){
-        return(sum(sapply(which.i[[k]], FUN = function(i) wMinusb(i=i, t=1, k=k, w.z=w.z, beta0 = beta0, beta.k=beta.k[[i]], X=X[[i]]))))
+        return(sum(sapply(which.i[[k]], FUN = function(i) wMinusb(i=i, t=1, k=k, w.z=w.z, beta.k=beta.k, beta.sk = beta.sk[[i]], X=X[[i]]))))
       }else{
         return(0)
       }
@@ -770,14 +755,16 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     ### update alpha.jk ### 
     #######################
     
+    ### this is slow: C++
+    
     alpha.jk <- lapply(1:(K), FUN = function(j){
       unlist(lapply(1:(K), FUN = function(k){
-        updateAlphaJK_rm(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
-                         sig2inv.alpha = sig2inv.alpha, w.z = w.z, X = X, beta.k = beta.k,
-                         m.alpha = m.alpha, mu.alpha = priors$mu.alpha)
+        updateAlphaJK(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
+                          sig2inv.alpha = sig2inv.alpha, w.z = w.z, X = X, beta.k = beta.k,
+                          beta.sk = beta.sk, m.alpha = m.alpha, mu.alpha = priors$mu.alpha)
       }))
     })
-    
+  
     
     if(anyNA(unlist(alpha.jk))) {
       stop("NA's in alpha.jk")
@@ -805,7 +792,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       alpha.jnotk[[k]] <- alpha.jk[[k]][-k]
     }
     sumAlphajk <- sum((unlist(alpha.jnotk) - priors$mu.alpha)^2)
-    sig2inv.alpha <- rgamma(1, priors$a1 + K*(K-1)/2, priors$b1 + .5*sumAlphajk)  
+    sig2inv.alpha <- rgamma(1, priors$a1 + K*(K-1)/2, priors$b1 + .5*sumAlphajk) 
     
     #########################
     ### update vinv.alpha ###
@@ -818,10 +805,69 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     ### update beta.k ### 
     #####################
     
-    # this will be different for each subject
-    # beta_ik so we don't sum over all i we sum over each subject 
+    beta.k <- mclapply(1:(K), FUN = function(k){
+      itimes <- lapply(1:n, FUN = function(i)  which(z[[i]] >= k))
+      nk.tilde  <- length(unlist(itimes)) # total number we're looking at the dimension of everything
+      if(nk.tilde > 0){
+        w.k <- unlist(lapply(1:n, FUN = function(i) {
+          if(any(itimes[[i]]>0)){
+            sapply(itimes[[i]], FUN = function(t) w.z[[i]][[t]][k])
+          }
+        }))
+        X.k <- numeric()
+        for(i in 1:n){
+          if(any(itimes[[i]]>0)){
+            X.k <- rbind(X.k, X[[i]][itimes[[i]],])
+          }
+        }
+        alpha.k <- list()
+        for(i in 1:n){
+          alphaTHIS <- numeric()
+          if(any(itimes[[i]]>0)){
+            for(j in z[[i]][itimes[[i]]-1]){
+              alphaTHIS <- c(alphaTHIS, alpha.jk[[j]][k])
+            }
+            if(1 %in% itimes[[i]]){
+              alphaTHIS <- c(alpha.0k[k], alphaTHIS)
+            }
+          }
+          alpha.k[[i]] <- alphaTHIS
+        }
+        alpha.k <- unlist(alpha.k)
+        
+        if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde){
+          stop("dimension of alpha, w, or X is wrong")
+        }
+        
+        if(!is.null(rmlist)){
+          Xibetak = numeric()
+          for(i in 1:n){
+            if(any(itimes[[i]])>0){
+              Xibetak = rbind(Xibetak, X[[i]][itimes[[i]],] %*% beta.sk[[i]][[k]])
+            }
+          }
+          V.k <- invMat(priors$SigInv.beta + crossprod(X.k, X.k))
+          m.k <- crossprod(V.k,crossprod(priors$SigInv.beta,priors$mu.beta) + crossprod(X.k,w.k - alpha.k - Xibetak))
+        }else{
+          V.k <- invMat(priors$SigInv.beta + crossprod(X.k, X.k))
+          m.k <- crossprod(V.k,crossprod(priors$SigInv.beta,priors$mu.beta) + crossprod(X.k,w.k - alpha.k))
+        }
+        return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
+      }else{ 
+        # update from prior
+        return(matrix(rmvn(n = 1, mu = priors$mu.beta, sigma = priors$Sigma.beta), nrow = q)) 
+      }
+    })
     
-    # calculate beta.ik for each subject
+    if(anyNA(unlist(beta.k))) {
+      stop("NA's in beta.k")
+    }
+    
+    ############################################
+    ### update beta.sk for repeated measures ###
+    ############################################
+  
+    
     beta.ik = list()
     for(i.sub in 1:n.sub){
       subs = which(rmlist == i.sub) # subjects under consideration 
@@ -860,12 +906,12 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
             stop("dimension of alpha, w, or X is wrong")
           }
           # update beta.k
-          V.k <- chol2inv(chol(priors$SigInv.beta + crossprod(X.k, X.k)))
-          m.k <- crossprod(V.k,crossprod(priors$SigInv.beta,priors$mu.beta) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta0[[k]])))
+          V.k <- chol2inv(chol(priors$SigInv.betaS + crossprod(X.k, X.k)))
+          m.k <- crossprod(V.k,crossprod(priors$SigInv.betaS,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
           return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
         }else{ 
           # update from prior
-          return(matrix(rmvn(n = 1, mu = priors$mu.beta, sigma = (1/kap2inv)*priors$Sigma.beta), nrow = q)) 
+          return(matrix(rmvn(n = 1, mu = priors$mu.betaS, sigma = (1/kap2inv)*priors$Sigma.betaS), nrow = q)) 
         }
       })
     }
@@ -874,94 +920,22 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     }
     
     # relist from 1:n
-    beta.k = list()
+    beta.sk = list()
     for(i in 1:n){
-      beta.k[[i]] = beta.ik[[rmlist[i]]]
+      beta.sk[[i]] = beta.ik[[rmlist[i]]]
     }
-    
-    ######################
-    ### update kap2inv ###
-    ######################
-    
-    ssbetaik <- 0 
-    for(i in 1:n.sub){
-      for(k in 1:K){
-        ssbetaik = ssbetaik + t(beta.ik[[i]][[k]] - priors$mu.beta)%*%priors$SigInv.beta%*%(beta.ik[[i]][[k]] - priors$mu.beta)
-      }
-    }
-    a.kap <- priors$a.kappa + n.sub*K/2
-    b.kap <- priors$b.kappa + (1/2)*ssbetaik
-    kap2inv <- rgamma(1, a.kap, b.kap); 1/kap2inv  
-    
-    
-    ####################
-    ### update beta0 ###
-    ####################
-    
-    beta0 <- mclapply(1:K, FUN = function(k){
-      itimes <- lapply(1:n, FUN = function(i)  which(z[[i]] >= k))
-      nk.tilde  <- length(unlist(itimes)) # total number we're looking at the dimension of everything
-      if(nk.tilde > 0){
-        w.k <- unlist(lapply(1:n, FUN = function(i) {
-          if(any(itimes[[i]]>0)){
-            sapply(itimes[[i]], FUN = function(t) w.z[[i]][[t]][k])
-          }
-        }))
-        X.k <- numeric()
-        for(i in 1:n){
-          if(any(itimes[[i]]>0)){
-            X.k <- rbind(X.k, X[[i]][itimes[[i]],])
-          }
-        }
-        alpha.k <- list()
-        for(i in 1:n){
-          alphaTHIS <- numeric()
-          if(any(itimes[[i]]>0)){
-            for(j in z[[i]][itimes[[i]]-1]){
-              alphaTHIS <- c(alphaTHIS, alpha.jk[[j]][k])
-            }
-            if(1 %in% itimes[[i]]){
-              alphaTHIS <- c(alpha.0k[k], alphaTHIS)
-            }
-          }
-          alpha.k[[i]] <- alphaTHIS
-        }
-        alpha.k <- unlist(alpha.k)
-        
-        
-        Xibetak = numeric()
-        for(i in 1:n){
-          if(any(itimes[[i]])>0){
-            Xibetak = rbind(Xibetak, X[[i]][itimes[[i]],] %*% beta.k[[i]][[k]])
-          }
-        }
-        
-        if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde | nrow(Xibetak) != nk.tilde){
-          stop("dimension of alpha, w, Xibetak, or X is wrong")
-        }
-        # update beta0
-        V.0 <- chol2inv(chol(priors$SigInv.beta0 + crossprod(X.k, X.k)))
-        m.0 <- crossprod(V.0,crossprod(priors$SigInv.beta0,priors$mu.beta0) + crossprod(X.k,w.k - alpha.k - Xibetak))
-        return(matrix(rmvn(n = 1, m.0, V.0), nrow = q))
-      }else{ 
-        # update from prior
-        return(matrix(rmvn(n = 1, mu = priors$mu.beta0, sigma = priors$Sigma.beta0), nrow = q)) 
-      }
-    })
-    if(anyNA(unlist(beta0))) {
-      stop("NA's in beta0")
-    }
-    
     
     ###################
     ### update pi.z ### 
     ###################
     
-    pi.z <- mclapply(1:n, FUN = function(i){
-      mclapply(1:t.max, FUN = function(t){
-        uppi(t, X[[i]], beta0, beta.k[[i]])
-      })
-    })
+    ajkmat = matrix(unlist(alpha.jk), nrow = K, ncol = K)
+    
+    if(!is.null(rmlist)){
+      pi.z = updatePi_rm(beta = beta.k, beta_sk = beta.sk, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+    }else{
+      pi.z = updatePi(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+    }
     
     #################################
     ### Sample New Missing Values ###
@@ -1047,6 +1021,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       mu.mse <- NULL
     }
     
+    
     #####################
     ### Store Results ###
     #####################
@@ -1082,25 +1057,31 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       s.imp <- s.imp+1
     }
     
+    #end.time1 <- Sys.time()
+    #print(s)
+    #if(s %% 10 == 0) print(K)     
+    #if(s %% 10 == 0) print(min(unlist(y)))
+    #print(mhacc)
+    #print(end.time1 - start.time1)
   }
-  
-  
-  list1 <- list(z.save = z.save[-(1:nburn)], K.save = K.save[-(1:nburn)],
-                ymar = y.mar.save, ylod = y.lod.save,
-                beta.save = beta.save[-(1:nburn)],
-                mu.save = mu.save[-(1:nburn)],
-                hamming = ham[-(1:nburn)], mu.mse = mu.mse[-(1:nburn)], 
-                mu.sse = mu.sse[-(1:nburn)],
-                mar.mse = mar.mse, lod.mse = lod.mse,
-                mar.sse = mar.sse, lod.sse = lod.sse,
-                mar.bias = mar.bias, lod.bias = lod.bias,
-                mar.sum.bias = mar.sum.bias, lod.sum.bias = lod.sum.bias,
-                mismat = mismat, ycomplete = ycomplete,
-                MH.arate = MH.a/(length(al)*sum(K.save)),
-                MH.lamrate = MH.lam/(p*sum(K.save)))
-  
-  class(list1) <- "ihmm"
-  return(list1)
-  
-  
+
+list1 <- list(z.save = z.save[-(1:nburn)], K.save = K.save[-(1:nburn)],
+              ymar = y.mar.save, ylod = y.lod.save,
+              beta.save = beta.save[-(1:nburn)],
+              mu.save = mu.save[-(1:nburn)],
+              hamming = ham[-(1:nburn)], mu.mse = mu.mse[-(1:nburn)], 
+              mu.sse = mu.sse[-(1:nburn)],
+              mar.mse = mar.mse, lod.mse = lod.mse,
+              mar.sse = mar.sse, lod.sse = lod.sse,
+              mar.bias = mar.bias, lod.bias = lod.bias,
+              mar.sum.bias = mar.sum.bias, lod.sum.bias = lod.sum.bias,
+              mismat = mismat, ycomplete = ycomplete,
+              MH.arate = MH.a/(length(al)*sum(K.save)),
+              MH.lamrate = MH.lam/(p*sum(K.save)))
+
+class(list1) <- "ihmm"
+return(list1)
+
+
 }
+

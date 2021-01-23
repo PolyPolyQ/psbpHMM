@@ -1,4 +1,20 @@
-
+#' Update alpha_jk
+#'
+#' @param j previous state
+#' @param k current state
+#' @param n number of time series
+#' @param t.max length of time series
+#' @param z hidden states
+#' @param vinv.alpha prior
+#' @param sig2inv.alpha prior
+#' @param w.z w
+#' @param X covariates
+#' @param beta.k overall beta
+#' @param beta.sk subject specific beta
+#' @param m.alpha prior
+#' @param mu.alpha prior
+#'
+#' @return sampled value for alpha_jk
 
 updateAlphaJK <- function(j, k, n, t.max, z, vinv.alpha, sig2inv.alpha, w.z, X, beta.k, beta.sk = NULL, 
                              m.alpha, mu.alpha){
