@@ -21,8 +21,17 @@ a2(c(1,2))
 a8(3,4,.5)
 
 # test3 functions 
-pilist2 = updatePi2(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = 288)
-pilist2
+pilist2 = updatePi(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = 288)
+length(pilist2)
+
+pilist3 = updatePi_rm(beta = beta.k, beta_sk = beta.sk, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = 288)
+length(pilist3)
+range(pilist3[[1]][[54]] - pi.z[[1]][[54]])
+
+updatepiR <- 
+
+
+
 
 # test4 functions 
 returnPi()
@@ -68,8 +77,7 @@ z <- lapply(1:n, FUN = function(i){
 })
 
 
-
-
+microbenchmark(R = dmvn, rcpp = mvndensity) 
 
 
 

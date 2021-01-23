@@ -1,11 +1,19 @@
 
 
+
+## build package and test data analysis on this 
+## can still make some functions faster 
+## update W
+## update alpha_jk
+
 ####################################################################################
 ### Function 1: mc-iHMM ###
 ### fits the cyclical model for multple time series ###
 ### allows for different X_i for each i to permit covariates or different times ###
 ### all time series are the same length ### 
+### allows for repeated meeasures if rmlist is given ###
 ####################################################################################
+
 
 ### X is a list with a matrix for each i ### 
 if(missing){
@@ -15,6 +23,8 @@ if(missing){
   algorithm = "Gibbs"
   SigmaPrior = "non-informative"
 }
+
+if(is.null(rmlist)) beta.sk = NULL
 
 #####################
 ### Initial Setup ###
@@ -56,9 +66,23 @@ if(is.null(priors$mu.alpha)) priors$mu.alpha <- 0 # fixed mean parameter prior o
 if(is.null(priors$m0)) priors$m0 <- 0 # fixed mean on m.alpha, prior mean for alpha.jj # higher so self-transition prob is higher
 if(is.null(priors$v0)) priors$v0 <- 1 # fixed variance on m.alpha, prior mean for alpha.jj
 # beta
-if(is.null(priors$mu.beta)) priors$mu.beta <- rep(0, q) # basis weight prior mean 
-if(is.null(priors$Sigma.beta)) priors$Sigma.beta <- diag(q) # basis weight prior variance
+if(is.null(priors$mu.beta)) priors$mu.beta <- rep(0, q) 
+if(is.null(priors$Sigma.beta)) priors$Sigma.beta <- diag(q) 
 if(!is.null(X)) priors$SigInv.beta <- invMat(priors$Sigma.beta) # cppFunction
+
+
+# subject specific beta if repeated measures 
+if(!is.null(rmlist)){
+  # beta_sk
+  if(is.null(priors$mu.betaS)) priors$mu.betaS <- rep(0, q) 
+  if(is.null(priors$Sigma.betaS)) priors$Sigma.betaS <- diag(q) 
+  if(!is.null(X)) priors$SigInv.betaS <- invMat(priors$Sigma.betaS) 
+ # shrinkage prior on random effects
+  if(is.null(priors$a.kappa)) priors$a.kappa <- 1 # shape for kap2inv 
+  if(is.null(priors$b.kappa)) priors$b.kappa <- 1 # rate for kap2inv 
+}
+
+
 
 # hyperiors on alpha
 if(is.null(priors$a1)) priors$a1 <- 1 # shape for sig2inv.alpha
@@ -189,14 +213,14 @@ for(k in 1:K){
 }
 
 
-# K only 
+# alpha 
 alpha.0k <- rep(0, K) # initial state intercept
 alpha.jk <- list() # state intercepts
 m.alpha <- priors$m0 # mean on alpha.jj
 sig2inv.alpha <- priors$a1/priors$a2 # precision on alpha.jk
 vinv.alpha <- priors$b1/priors$b2 # precision on alpha.jj
 
-# K only 
+# beta
 beta.k <- list() # regression coefficients
 for(k in 1:(K)){
   alpha.jk[[k]] <- rnorm(K, priors$mu.alpha, sqrt(1/sig2inv.alpha))
@@ -204,14 +228,40 @@ for(k in 1:(K)){
   beta.k[[k]] <- matrix(rmvn(1, priors$mu.beta, priors$Sigma.beta), nrow = q, ncol = 1) # length q
 }
 
+# beta_s random effects 
+if(!is.null(rmlist)){
+  kap2inv <- 1
+  n.sub = length(unique(rmlist)) # number of unique subjects
+  beta.ik = list()
+  for(i in 1:n.sub){
+    beta.ik[[i]] = list()
+    for(k in 1:K){
+      beta.ik[[i]][[k]] <- matrix(rmvn(1, priors$mu.beta, (1/kap2inv)*priors$Sigma.beta), nrow = q, ncol = 1) # length q
+    }
+  }
+  beta.sk = list()
+  for(i in 1:n){
+    beta.sk[[i]] = beta.ik[[rmlist[i]]]
+  }
+}
+# beta.k is beta.sk 
+
 ################################
 ### update transition matrix ###
 ################################
 
 ajkmat = matrix(unlist(alpha.jk), nrow = K, ncol = K)
-pi.z = updatePi2(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
 
-# fixed values for new state probabilities 
+if(!is.null(rmlist)){
+  pi.z = updatePi_rm(beta = beta.k, beta_sk = beta.sk, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+}else{
+  pi.z = updatePi(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+}
+
+################################################
+### fixed values for new state probabilities ###
+################################################
+
 gampp <- mgamma(nu = nu.df, p = p)
 # fixed for "wish", starting value for "ni" because R.mat will change with each iteration as aj.inv changes
 # if "ni" then need to update detR.star and log.stuff each iteration
@@ -268,7 +318,7 @@ beta.save <- list()
 ###############
 ### Sampler ###
 ###############
-
+start.time = Sys.time()
 for(s in 1:niter){
   
   #####################
@@ -300,6 +350,8 @@ for(s in 1:niter){
   ### update the possible states for each t ###  ### done
   #############################################
   
+  # this is slow: write this is C++
+  
   state.list <- list()
   # state.list is a list of states that belong to some possible trajectory for each time point
   for(i in 1:n){
@@ -323,30 +375,33 @@ for(s in 1:niter){
     })
   }
   
-  ###########################
-  ### Determine t minus 1 ### 
-  ###########################
-  
-  detzAll <- mclapply(1:n, FUN = function(i){
-    detZminus1(i = i, state.list.i = state.list[[i]], pi.z = pi.z[[i]], u.i = u[[i]], t.max = t.max)
-  })
-  
   ################
   ### Sample Z ### 
   ################
+
+  # detzAll <- mclapply(1:n, FUN = function(i){
+  #   detZminus1(i = i, state.list.i = state.list[[i]], pi.z = pi.z[[i]], u.i = u[[i]], t.max = t.max)
+  # })
+  # 
+  # cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
+  # K <- length(unique(unlist(z)))
+  # 
+  # # only the joint NIW option 
+  # z2 <- mclapply(1:n, FUN = function(i) {
+  #   updateZ(i=i, y.i=y[[i]], mu=mu, cholSigma=cholSigma, detR.stari=detR.star[[i]],
+  #           nu.df=nu.df, K=K, log.stuff=log.stuff, t.max=t.max, 
+  #           detz = detzAll[[i]], state.list.i = state.list[[i]])
+  # })
   
-  ###################################
-  ### make this piece faster next ###
-  ###################################
+  ######################
+  ### Sample Z: Rcpp ### 
+  ######################
   
-  cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
-  K <- length(unique(unlist(z)))
+  z1 = upZ(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff, 
+           nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max, K = K, n = n, d = p)
   
-  # only the joint NIW option 
-  z <- mclapply(1:n, FUN = function(i) {
-    updateZ(i=i, y.i=y[[i]], mu=mu, cholSigma=cholSigma, detR.stari=detR.star[[i]],
-            nu.df=nu.df, K=K, log.stuff=log.stuff, t.max=t.max, 
-            detz = detzAll[[i]], state.list.i = state.list[[i]])
+  z <- lapply(1:n, FUN = function(i){
+    z = as.numeric(z1[[i]])
   })
 
   
@@ -393,6 +448,18 @@ for(s in 1:niter){
     alpha.jk[[K+1]] <- rnorm(K+1, priors$mu.alpha, sqrt(1/sig2inv.alpha))
     alpha.jk[[K+1]][K+1] <- priors$m0
     beta.k[[K+1]] <- matrix(rmvn(1, priors$mu.beta, priors$Sigma.beta), nrow = q, ncol = 1) # length q
+    
+    # repeated measures for beta 
+    if(!is.null(rmlist)){
+      beta.K.new = list()
+      for(i in 1:n.sub){
+        beta.K.new[[i]] = matrix(rmvn(1, priors$mu.betaS, (1/kap2inv)*priors$Sigma.betaS), nrow = q, ncol = 1)
+      }
+      for(i in 1:n){
+        beta.sk[[i]][[K+1]] = beta.K.new[[rmlist[i]]]
+      }
+    }
+
     EnterNew <- TRUE # indicator that we entered into a new state this round 
   }else{
     EnterNew <- FALSE # didn't go into a new state 
@@ -417,12 +484,25 @@ for(s in 1:niter){
   L.new <- list()
   D.new <- list()
   
+  if(!is.null(rmlist)){
+    betaS.new <- list()
+    for(i in 1:n){
+      betaS.new[[i]] = list()
+    }
+  }
+  
+  
   rj <- 1
   for(k in zu){ # 
     alpha.new[[rj]] <- alpha.jk[[k]][zu]
     beta.new[[rj]] <- beta.k[[k]]
     mu.new[[rj]] <- mu[[k]]
     Sigma.new[[rj]] <- Sigma[[k]]
+    if(!is.null(rmlist)){
+      for(i in 1:n){
+        betaS.new[[i]][[rj]] = beta.sk[[i]][[k]]
+      }
+    }
     if(algorithm == "MH"){
       al.new[[rj]] <- al[[k]]
       lams.new[[rj]] <- lams[[k]]
@@ -434,6 +514,8 @@ for(s in 1:niter){
   
   alpha.jk <- alpha.new
   beta.k <- beta.new
+  if(!is.null(rmlist)) beta.sk <- betaS.new
+  
   z <- z.new
   Sigma <- Sigma.new
   mu <- mu.new
@@ -607,14 +689,17 @@ for(s in 1:niter){
   # for each t, w.z gives me a VECTOR based on the previous time point and values up to the current time point
   # so each w.z[[t]] should be a VECTOR of length z_t
   
+  ### this is slow: C++
   w.z <- list()
   for(i in 1:n){
     w.z[[i]] <- list()
     for(t in 1:t.max){
-      w.z[[i]][[t]] <- sapply(1:z[[i]][t], FUN = function(l) upWdiff(t=t, l=l, i=i, alpha.0k=alpha.0k, X=X[[i]], 
-                                                                     beta.k=beta.k, alpha.jk=alpha.jk, z=z))
+      w.z[[i]][[t]] <- sapply(1:z[[i]][t], FUN = function(l) updateW(t=t, l=l, i=i, alpha.0k=alpha.0k, X=X[[i]], 
+                                                                     beta.k=beta.k, beta.sk = beta.sk[[i]], 
+                                                                     alpha.jk=alpha.jk, z=z))
     }
   }
+  
   
   #######################
   ### update alpha.0k ### ### done 
@@ -636,7 +721,7 @@ for(s in 1:niter){
   # sum over w-beta for the i's s.t z_i1 >= k for each k 
   wminusbeta <- sapply(1:K, FUN = function(k) {
     if(any(which.i[[k]] != 0)){
-      return(sum(sapply(which.i[[k]], FUN = function(i) wMinusb(i=i, t=1, k=k, w.z=w.z, beta.k=beta.k, X=X[[i]]))))
+      return(sum(sapply(which.i[[k]], FUN = function(i) wMinusb(i=i, t=1, k=k, w.z=w.z, beta.k=beta.k, beta.sk = beta.sk[[i]], X=X[[i]]))))
     }else{
       return(0)
     }
@@ -652,14 +737,16 @@ for(s in 1:niter){
   ### update alpha.jk ### 
   #######################
   
+  ### this is slow: C++
+  
   alpha.jk <- lapply(1:(K), FUN = function(j){
     unlist(lapply(1:(K), FUN = function(k){
-      updateAlphaJKdiff(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
+      updateAlphaJK(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
                         sig2inv.alpha = sig2inv.alpha, w.z = w.z, X = X, beta.k = beta.k,
-                        m.alpha = m.alpha, mu.alpha = priors$mu.alpha)
+                        beta.sk = beta.sk, m.alpha = m.alpha, mu.alpha = priors$mu.alpha)
     }))
   })
-  
+
   
   if(anyNA(unlist(alpha.jk))) {
     stop("NA's in alpha.jk")
@@ -729,29 +816,108 @@ for(s in 1:niter){
         alpha.k[[i]] <- alphaTHIS
       }
       alpha.k <- unlist(alpha.k)
+      
       if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde){
         stop("dimension of alpha, w, or X is wrong")
       }
-      # update beta.k
-      V.k <- chol2inv(chol(priors$SigInv.beta + crossprod(X.k, X.k)))
-      m.k <- crossprod(V.k,crossprod(priors$SigInv.beta,priors$mu.beta) + crossprod(X.k,w.k - alpha.k))
+      
+      if(!is.null(rmlist)){
+        Xibetak = numeric()
+        for(i in 1:n){
+          if(any(itimes[[i]])>0){
+            Xibetak = rbind(Xibetak, X[[i]][itimes[[i]],] %*% beta.sk[[i]][[k]])
+          }
+        }
+        V.k <- invMat(priors$SigInv.beta + crossprod(X.k, X.k))
+        m.k <- crossprod(V.k,crossprod(priors$SigInv.beta,priors$mu.beta) + crossprod(X.k,w.k - alpha.k - Xibetak))
+      }else{
+        V.k <- invMat(priors$SigInv.beta + crossprod(X.k, X.k))
+        m.k <- crossprod(V.k,crossprod(priors$SigInv.beta,priors$mu.beta) + crossprod(X.k,w.k - alpha.k))
+      }
       return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
     }else{ 
       # update from prior
       return(matrix(rmvn(n = 1, mu = priors$mu.beta, sigma = priors$Sigma.beta), nrow = q)) 
     }
   })
+  
   if(anyNA(unlist(beta.k))) {
     stop("NA's in beta.k")
   }
   
+  ############################################
+  ### update beta.sk for repeated measures ###
+  ############################################
+
+  
+  beta.ik = list()
+  for(i.sub in 1:n.sub){
+    subs = which(rmlist == i.sub) # subjects under consideration 
+    num.subs = length(subs)
+    
+    beta.ik[[i.sub]] <- mclapply(1:K, FUN = function(k){
+      itimes <- lapply(subs, FUN = function(i)  which(z[[i]] >= k)) # only subject i.sub
+      nk.tilde  <- length(unlist(itimes)) # total number of time points, dimension of everything that follows
+      if(nk.tilde > 0){
+        w.k <- unlist(lapply(1:num.subs, FUN = function(i) {
+          if(any(itimes[[i]]>0)){
+            sapply(itimes[[i]], FUN = function(t) w.z[[subs[i]]][[t]][k])
+          }
+        }))
+        X.k <- numeric()
+        for(i in 1:num.subs){
+          if(any(itimes[[i]]>0)){
+            X.k <- rbind(X.k, X[[subs[i]]][itimes[[i]],])
+          }
+        }
+        alpha.k <- list()
+        for(i in 1:num.subs){
+          alphaTHIS <- numeric()
+          if(any(itimes[[i]]>0)){
+            for(j in z[[subs[i]]][itimes[[i]]-1]){
+              alphaTHIS <- c(alphaTHIS, alpha.jk[[j]][k])
+            }
+            if(1 %in% itimes[[i]]){
+              alphaTHIS <- c(alpha.0k[k], alphaTHIS)
+            }
+          }
+          alpha.k[[i]] <- alphaTHIS
+        }
+        alpha.k <- unlist(alpha.k)
+        if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde){
+          stop("dimension of alpha, w, or X is wrong")
+        }
+        # update beta.k
+        V.k <- chol2inv(chol(priors$SigInv.betaS + crossprod(X.k, X.k)))
+        m.k <- crossprod(V.k,crossprod(priors$SigInv.betaS,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
+        return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
+      }else{ 
+        # update from prior
+        return(matrix(rmvn(n = 1, mu = priors$mu.betaS, sigma = (1/kap2inv)*priors$Sigma.betaS), nrow = q)) 
+      }
+    })
+  }
+  if(anyNA(unlist(beta.ik))) {
+    stop("NA's in beta.k")
+  }
+  
+  # relist from 1:n
+  beta.sk = list()
+  for(i in 1:n){
+    beta.sk[[i]] = beta.ik[[rmlist[i]]]
+  }
   
   ###################
-  ### update pi.z ### ### done 
+  ### update pi.z ### 
   ###################
   
   ajkmat = matrix(unlist(alpha.jk), nrow = K, ncol = K)
-  pi.z = updatePi2(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+  
+  if(!is.null(rmlist)){
+    pi.z = updatePi_rm(beta = beta.k, beta_sk = beta.sk, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+  }else{
+    pi.z = updatePi(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
+  }
   
   #################################
   ### Sample New Missing Values ###
@@ -879,6 +1045,6 @@ for(s in 1:niter){
   #if(s %% 10 == 0) print(min(unlist(y)))
   #print(mhacc)
   #print(end.time1 - start.time1)
-  
-  
 }
+end.time = Sys.time()
+end.time - start.time

@@ -136,6 +136,85 @@ List updatePi(List beta, List X, arma::vec a0, arma::mat ajk, int tmax){
 }
 
 // [[Rcpp::export]]
+List updatePi_rm(List beta, List beta_sk, List X, arma::vec a0, arma::mat ajk, int tmax){
+  
+  // X is a List for each i 
+  int n = X.size(); // number of people
+  int K = beta.size();
+  arma::vec first(K);
+  arma::vec second(K);
+  arma::mat xi; 
+  arma::mat x; 
+  arma::mat xb; 
+  arma::mat xbs; 
+  List bs; 
+  arma::mat y; 
+  
+  List probMat(n); // each element is a T-length list of matrices 
+  
+  for(int ind = 0; ind < n; ++ind){
+    List pimat(tmax);
+    xi = as<arma::mat>(X[ind]);
+    bs = beta_sk[ind]; 
+    
+    for(int t = 0; t < tmax; ++t){
+      x = xi.row(t);
+      if(t == 0){
+        for(int k = 0; k < K; ++k){
+          xb = as<arma::rowvec>(beta[k])*x.t();
+          xbs = as<arma::rowvec>(bs[k])*x.t();
+          y = a0[k] + xb + xbs; 
+          first[k] = R::pnorm(as_scalar(y), 0, 1, 1, 0);
+          if (k > 0) second[k] = 1-first[k-1];
+        }
+        second[0] = 1;
+        arma::vec third = cumprod(second);
+        arma::vec fourth(K+1);
+        double s = 0;
+        for(int i = 0; i < K; i++){
+          fourth[i] = first[i]*third[i];
+          s = s + fourth[i];
+        }
+        //double last = sum(fourth);
+        fourth[K]=1-s; // index starts at 0 
+        
+        pimat[t] = fourth;
+      }else {
+        arma::mat Z;
+        
+        for(int j = 0; j < K; ++j){
+          for(int k = 0; k < K; ++k){
+            xb = as<arma::rowvec>(beta[k])*x.t();
+            xbs = as<arma::rowvec>(bs[k])*x.t();
+            double a = ajk(k,j);
+            y = a + xb + xbs; 
+            first[k] = R::pnorm(as_scalar(y), 0, 1, 1, 0);
+            if (k > 0) second[k] = 1-first[k-1];
+          }
+          
+          second[0] = 1;
+          arma::vec third = cumprod(second);
+          arma::vec fourth(K+1);
+          double s = 0;
+          for(int i = 0; i < K; i++){
+            fourth[i] = first[i]*third[i];
+            s = s + fourth[i];
+          }
+          //double last = sum(fourth);
+          fourth[K]=1-s; // index starts a 0 
+          // fourth is the jth row
+          Z = join_rows(Z, fourth);
+          pimat[t] = Z.t();
+        }
+      }
+    }
+    probMat[ind] = pimat;
+  }
+  return(probMat);
+}
+
+
+// [[Rcpp::export]]
 double returnPi(){
   double x = M_PI;
   return(x);

@@ -155,6 +155,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// updatePi_rm
+List updatePi_rm(List beta, List beta_sk, List X, arma::vec a0, arma::mat ajk, int tmax);
+RcppExport SEXP _psbpHMM_updatePi_rm(SEXP betaSEXP, SEXP beta_skSEXP, SEXP XSEXP, SEXP a0SEXP, SEXP ajkSEXP, SEXP tmaxSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< List >::type beta_sk(beta_skSEXP);
+    Rcpp::traits::input_parameter< List >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type a0(a0SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type ajk(ajkSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    rcpp_result_gen = Rcpp::wrap(updatePi_rm(beta, beta_sk, X, a0, ajk, tmax));
+    return rcpp_result_gen;
+END_RCPP
+}
 // returnPi
 double returnPi();
 RcppExport SEXP _psbpHMM_returnPi() {
@@ -267,6 +283,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_mhDecomp", (DL_FUNC) &_psbpHMM_mhDecomp, 2},
     {"_psbpHMM_invMat", (DL_FUNC) &_psbpHMM_invMat, 1},
     {"_psbpHMM_updatePi", (DL_FUNC) &_psbpHMM_updatePi, 5},
+    {"_psbpHMM_updatePi_rm", (DL_FUNC) &_psbpHMM_updatePi_rm, 6},
     {"_psbpHMM_returnPi", (DL_FUNC) &_psbpHMM_returnPi, 0},
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},

@@ -53,6 +53,10 @@ updatePi <- function(beta, X, a0, ajk, tmax) {
     .Call(`_psbpHMM_updatePi`, beta, X, a0, ajk, tmax)
 }
 
+updatePi_rm <- function(beta, beta_sk, X, a0, ajk, tmax) {
+    .Call(`_psbpHMM_updatePi_rm`, beta, beta_sk, X, a0, ajk, tmax)
+}
+
 returnPi <- function() {
     .Call(`_psbpHMM_returnPi`)
 }
