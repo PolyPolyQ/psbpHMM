@@ -509,10 +509,10 @@ List upStateList(List piz, List u, int K, int tmax){
     f3 = wrap(f1);
     f4 = wrap(f2); 
     // needs to be a vector 
-    stateList[t] = intersect(f3, f4);
+    stateList[t] = sort_unique(intersect(f3, f4))+1;
   }
   
-  return(forList);
+  return(stateList);
 }
 
 

@@ -60,7 +60,7 @@ upStateList(piz = pi.z, u = u, K = 12, tmax = 288)
 
 ## test functions 
 upStateList(piz = pi.z, u = u, K = 12, tmax = 288)
-test = upStateList(piz = pi.z, u = u, K = K, tmax = t.max)
+test = upStateList(piz = pi.z, u = u, K = 12, tmax = 288)
 
 ### upStateList gives me for.list-1
 lapply(1:t.max, FUN = function(t){
@@ -72,7 +72,7 @@ lapply(1:t.max, FUN = function(t){
 })
 
 lapply(1:t.max, FUN = function(t){
-  state.list[[1]][[t]] == test[[t]]+1
+  state.list[[1]][[t]] == test[[t]]
 })
 
 for.list
