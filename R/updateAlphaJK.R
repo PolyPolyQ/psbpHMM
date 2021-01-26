@@ -15,6 +15,7 @@
 #' @param mu.alpha prior
 #'
 #' @return sampled value for alpha_jk
+#' @export 
 
 updateAlphaJK <- function(j, k, n, t.max, z, vinv.alpha, sig2inv.alpha, w.z, X, beta.k, beta.sk = NULL, 
                              m.alpha, mu.alpha){

@@ -11,6 +11,7 @@
 #' @param z hidden states 
 #'
 #' @return sampled value for W 
+#' @export
 #'
 updateW <- function(t,l,i, alpha.0k, X, beta.k, beta.sk = NULL, alpha.jk, z){
   

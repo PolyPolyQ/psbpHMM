@@ -218,6 +218,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// upStateList
+List upStateList(List piz, List u, int K, int tmax);
+RcppExport SEXP _psbpHMM_upStateList(SEXP pizSEXP, SEXP uSEXP, SEXP KSEXP, SEXP tmaxSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type piz(pizSEXP);
+    Rcpp::traits::input_parameter< List >::type u(uSEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    rcpp_result_gen = Rcpp::wrap(upStateList(piz, u, K, tmax));
+    return rcpp_result_gen;
+END_RCPP
+}
 // csample_num
 NumericVector csample_num(NumericVector x, int size, bool replace, NumericVector prob);
 RcppExport SEXP _psbpHMM_csample_num(SEXP xSEXP, SEXP sizeSEXP, SEXP replaceSEXP, SEXP probSEXP) {
@@ -287,6 +301,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_returnPi", (DL_FUNC) &_psbpHMM_returnPi, 0},
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},
+    {"_psbpHMM_upStateList", (DL_FUNC) &_psbpHMM_upStateList, 4},
     {"_psbpHMM_csample_num", (DL_FUNC) &_psbpHMM_csample_num, 4},
     {"_psbpHMM_csample_int", (DL_FUNC) &_psbpHMM_csample_int, 4},
     {"_psbpHMM_a3", (DL_FUNC) &_psbpHMM_a3, 1},

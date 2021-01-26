@@ -69,6 +69,10 @@ upZ <- function(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax,
     .Call(`_psbpHMM_upZ`, stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d)
 }
 
+upStateList <- function(piz, u, K, tmax) {
+    .Call(`_psbpHMM_upStateList`, piz, u, K, tmax)
+}
+
 csample_num <- function(x, size, replace, prob = as.numeric( c())) {
     .Call(`_psbpHMM_csample_num`, x, size, replace, prob)
 }

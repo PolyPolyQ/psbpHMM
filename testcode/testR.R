@@ -28,11 +28,6 @@ pilist3 = updatePi_rm(beta = beta.k, beta_sk = beta.sk, X = X, a0 = alpha.0k, aj
 length(pilist3)
 range(pilist3[[1]][[54]] - pi.z[[1]][[54]])
 
-updatepiR <- 
-
-
-
-
 # test4 functions 
 returnPi()
 
@@ -76,8 +71,25 @@ z <- lapply(1:n, FUN = function(i){
   z = as.numeric(z1[[i]])
 })
 
-
 microbenchmark(R = dmvn, rcpp = mvndensity) 
+
+
+i=1
+t=2
+pi.z[[i]][[t]]
+upStateList(piz = pi.z, u = u, K = 12, tmax = 288)
+
+test = upStateList(piz = pi.z, u = u, K = K, tmax = t.max)
+
+### upStateList gives me for.list-1
+
+
+j = 2
+for.list[[j]]
+test[[j]]+1
+
+
+
 
 
 

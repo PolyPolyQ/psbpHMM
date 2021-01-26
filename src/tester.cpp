@@ -406,6 +406,77 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
 }
 
 // [[Rcpp::export]]
+List upStateList(List piz, List u, int K, int tmax){
+  
+  List stateList; 
+  List forList(tmax); 
+  List backList; 
+  List pizi;
+  arma::vec ui;
+  arma::mat pizit; 
+  double uit;
+  int k;
+  int t; 
+  int i; 
+  arma::vec whichKtemp; 
+  IntegerVector whichK(0);
+  int idx; 
+  arma::vec whichKminus1; 
+  int tempK; 
+  arma::vec pizitk;
+  IntegerVector whichKprev; 
+  arma::vec pizitk0; 
+  
+  
+  // loop through individuals 
+  i = 0; 
+  ui = as<arma::vec>(u[i]);
+  pizi = piz[i]; // list
+  
+  // first time point 
+  t = 0; 
+  pizitk0 = as<arma::vec>(pizi[t]); 
+  uit = ui[t]; 
+  
+  whichKtemp = as<arma::vec>(whichK); 
+  whichKtemp.set_size(0);
+  whichK = wrap(whichKtemp); 
+
+  for(k = 0; k < K+1; ++k){
+    if(pizitk0[k] >= uit){
+      whichK.push_back(k); 
+    }
+  }
+  
+  forList[t] = whichK; 
+  
+  for(t = 1; t < tmax; ++t){
+    whichKminus1 = as<arma::vec>(forList[t-1]); // vector of previous states 
+    whichKprev = wrap(whichKminus1); // IntegerVector
+    uit = ui[t]; 
+    whichKtemp = as<arma::vec>(whichK); 
+    whichKtemp.set_size(0);
+    whichK = wrap(whichKtemp); 
+    pizit = as<arma::mat>(pizi[t]); // prob matrix for current time point 
+    for(idx = 0; idx < whichKprev.length(); ++idx){
+      tempK = whichKprev[idx]; // one previous state at a time 
+      if(tempK < K){ // can't go from a new state 
+        pizitk = (pizit.row(tempK)).t(); // get the transition probs for the one previous state 
+        for(k = 0; k < K+1; ++k){
+          if(pizitk[k] >= uit){
+            whichK.push_back(k); 
+          }
+        }
+      }
+    }
+    forList[t] = sort_unique(whichK); 
+  }
+
+  return(forList);
+}
+
+
+// [[Rcpp::export]]
 NumericVector csample_num( NumericVector x,
                            int size,
                            bool replace,

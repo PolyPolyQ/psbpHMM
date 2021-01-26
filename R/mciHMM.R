@@ -361,7 +361,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     ### initial stuff ### ### done 
     #####################
     
-    if(s %% 10 == 0) print(paste("iteration", s))
+    print(paste("iteration", s))
     #start.time1 <- Sys.time()
     z.prev <- list()
     z.prev <- mclapply(1:n, FUN=function(i) return(z[[i]]))
@@ -867,64 +867,77 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     ### update beta.sk for repeated measures ###
     ############################################
   
-    
-    beta.ik = list()
-    for(i.sub in 1:n.sub){
-      subs = which(rmlist == i.sub) # subjects under consideration 
-      num.subs = length(subs)
+    if(!is.null(rmlist)){
+      beta.ik = list()
+      for(i.sub in 1:n.sub){
+        subs = which(rmlist == i.sub) # subjects under consideration 
+        num.subs = length(subs)
+        
+        beta.ik[[i.sub]] <- mclapply(1:K, FUN = function(k){
+          itimes <- lapply(subs, FUN = function(i)  which(z[[i]] >= k)) # only subject i.sub
+          nk.tilde  <- length(unlist(itimes)) # total number of time points, dimension of everything that follows
+          if(nk.tilde > 0){
+            w.k <- unlist(lapply(1:num.subs, FUN = function(i) {
+              if(any(itimes[[i]]>0)){
+                sapply(itimes[[i]], FUN = function(t) w.z[[subs[i]]][[t]][k])
+              }
+            }))
+            X.k <- numeric()
+            for(i in 1:num.subs){
+              if(any(itimes[[i]]>0)){
+                X.k <- rbind(X.k, X[[subs[i]]][itimes[[i]],])
+              }
+            }
+            alpha.k <- list()
+            for(i in 1:num.subs){
+              alphaTHIS <- numeric()
+              if(any(itimes[[i]]>0)){
+                for(j in z[[subs[i]]][itimes[[i]]-1]){
+                  alphaTHIS <- c(alphaTHIS, alpha.jk[[j]][k])
+                }
+                if(1 %in% itimes[[i]]){
+                  alphaTHIS <- c(alpha.0k[k], alphaTHIS)
+                }
+              }
+              alpha.k[[i]] <- alphaTHIS
+            }
+            alpha.k <- unlist(alpha.k)
+            if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde){
+              stop("dimension of alpha, w, or X is wrong")
+            }
+            # update beta.k
+            V.k <- chol2inv(chol(priors$SigInv.betaS + crossprod(X.k, X.k)))
+            m.k <- crossprod(V.k,crossprod(priors$SigInv.betaS,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
+            return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
+          }else{ 
+            # update from prior
+            return(matrix(rmvn(n = 1, mu = priors$mu.betaS, sigma = (1/kap2inv)*priors$Sigma.betaS), nrow = q)) 
+          }
+        })
+      }
+      if(anyNA(unlist(beta.ik))) {
+        stop("NA's in beta.k")
+      }
       
-      beta.ik[[i.sub]] <- mclapply(1:K, FUN = function(k){
-        itimes <- lapply(subs, FUN = function(i)  which(z[[i]] >= k)) # only subject i.sub
-        nk.tilde  <- length(unlist(itimes)) # total number of time points, dimension of everything that follows
-        if(nk.tilde > 0){
-          w.k <- unlist(lapply(1:num.subs, FUN = function(i) {
-            if(any(itimes[[i]]>0)){
-              sapply(itimes[[i]], FUN = function(t) w.z[[subs[i]]][[t]][k])
-            }
-          }))
-          X.k <- numeric()
-          for(i in 1:num.subs){
-            if(any(itimes[[i]]>0)){
-              X.k <- rbind(X.k, X[[subs[i]]][itimes[[i]],])
-            }
-          }
-          alpha.k <- list()
-          for(i in 1:num.subs){
-            alphaTHIS <- numeric()
-            if(any(itimes[[i]]>0)){
-              for(j in z[[subs[i]]][itimes[[i]]-1]){
-                alphaTHIS <- c(alphaTHIS, alpha.jk[[j]][k])
-              }
-              if(1 %in% itimes[[i]]){
-                alphaTHIS <- c(alpha.0k[k], alphaTHIS)
-              }
-            }
-            alpha.k[[i]] <- alphaTHIS
-          }
-          alpha.k <- unlist(alpha.k)
-          if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde){
-            stop("dimension of alpha, w, or X is wrong")
-          }
-          # update beta.k
-          V.k <- chol2inv(chol(priors$SigInv.betaS + crossprod(X.k, X.k)))
-          m.k <- crossprod(V.k,crossprod(priors$SigInv.betaS,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
-          return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
-        }else{ 
-          # update from prior
-          return(matrix(rmvn(n = 1, mu = priors$mu.betaS, sigma = (1/kap2inv)*priors$Sigma.betaS), nrow = q)) 
+      # relist from 1:n
+      beta.sk = list()
+      for(i in 1:n){
+        beta.sk[[i]] = beta.ik[[rmlist[i]]]
+      }
+      
+      # update kap2inv 
+      ssbetaik <- 0 
+      for(i in 1:n.sub){
+        for(k in 1:K){
+          ssbetaik = ssbetaik + t(beta.ik[[i]][[k]] - priors$mu.betaS)%*%priors$SigInv.betaS%*%(beta.ik[[i]][[k]] - priors$mu.betaS)
         }
-      })
+      }
+      a.kap <- priors$a.kappa + n.sub*K/2
+      b.kap <- priors$b.kappa + (1/2)*ssbetaik
+      kap2inv <- rgamma(1, a.kap, b.kap); 1/kap2inv  
+      
     }
-    if(anyNA(unlist(beta.ik))) {
-      stop("NA's in beta.k")
-    }
-    
-    # relist from 1:n
-    beta.sk = list()
-    for(i in 1:n){
-      beta.sk[[i]] = beta.ik[[rmlist[i]]]
-    }
-    
+   
     ###################
     ### update pi.z ### 
     ###################

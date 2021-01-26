@@ -1,3 +1,6 @@
+rm(list = ls())
+gc()
+
 #################
 ### Libraries ###
 #################
@@ -6,9 +9,14 @@ library(Rcpp)
 library(RcppArmadillo)
 library(microbenchmark)
 
+compileAttributes()
+devtools::build()
+devtools::install()
+library(psbpHMM)
+
 library(gdata)
 library(invgamma)
-library(markovPSBP) # this brings in all my other functions yay! 
+#library(markovPSBP) # this brings in all my other functions yay! 
 library(gtools)
 library(mvtnorm)
 library(matrixcalc)
@@ -30,7 +38,7 @@ set.seed(22*simnum)
 ### Simulate Data ###
 #####################
 
-n = 50 # sampling days
+n = 5 # sampling days
 t.max <- 288
 lodmis <- 0.05
 marmis <- 0.05
@@ -58,6 +66,7 @@ p <- 3
 ## repeated measures test 
 rmlist = c(rep(1,5), rep(2,5), rep(3,6), rep(4,5), rep(5,5), rep(6,5),
             rep(7,9), rep(8, 5), rep(9,5))
+rmlist = NULL
 
 #################################
 ### Set Priors and Parameters ###
@@ -86,6 +95,22 @@ eta.star = 3
 #################
 ### Fit Model ###
 #################
+
+fitMarkovRM <- function(niter=niter, nburn=nburn, y=y, rmlist=rmlist, ycomplete=ycomplete, X=X,
+                        priors=priors, K.start=K.start, z.true=z.true, lod=lod,
+                        mu.true=mu.true, missing = missing, 
+                        tau2 = tau2, a.tune = a.tunee, b.tune = b.tune,
+                        resK = resK, eta.star = eta.star, len.imp = len.imp)
+
+
+
+
+## need to bring the data and FCCS repeaated measures script over here and 
+## run the 50 sample data analysis 
+## then try to make some functions faster so you can do some sensitivity analyses
+## also need to redo the validation study simulations because you found one bug
+## in the repeated measures function
+
 
 
 
