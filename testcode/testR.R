@@ -9,6 +9,8 @@ devtools::build()
 devtools::install()
 library(psbpHMM)
 
+source("testcode/New_psbpiHMM_funs/functionsR.R")
+
 # test1 functions
 timesTwo(5)
 addTwo(5)
@@ -32,29 +34,6 @@ range(pilist3[[1]][[54]] - pi.z[[1]][[54]])
 returnPi()
 
 # test5 functions
-i = 1
-t = 1
-k = 1
-y[[i]][1,]
-mu[[k]]
-Sigma[[k]]
-p
-
-mvndensity(y=y[[i]][1,], mu=mu[[k]], Sigma=Sigma[[k]], d=p)
-dmvn(X = y[[i]][1,], mu = mu[[k]], sigma = Sigma[[k]], log = F, 1, isChol = FALSE)
-
-state.list[[i]][[t]]
-y
-mu
-Sigma
-log.stuff
-nu.df
-detR.star
-t.max
-K
-n
-p
-det(Sigma[[k]])
 
 
 # test6 functions
@@ -79,9 +58,25 @@ t=2
 pi.z[[i]][[t]]
 upStateList(piz = pi.z, u = u, K = 12, tmax = 288)
 
+## test functions 
+upStateList(piz = pi.z, u = u, K = 12, tmax = 288)
 test = upStateList(piz = pi.z, u = u, K = K, tmax = t.max)
 
 ### upStateList gives me for.list-1
+lapply(1:t.max, FUN = function(t){
+  for.list[[t]] == test[[t]]+1
+})
+
+lapply(1:t.max, FUN = function(t){
+  back.list[[t]] == test[[t]]+1
+})
+
+lapply(1:t.max, FUN = function(t){
+  state.list[[1]][[t]] == test[[t]]+1
+})
+
+for.list
+
 
 
 j = 2

@@ -408,9 +408,9 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
 // [[Rcpp::export]]
 List upStateList(List piz, List u, int K, int tmax){
   
-  List stateList; 
+  List stateList(tmax); 
   List forList(tmax); 
-  List backList; 
+  List backList(tmax);
   List pizi;
   arma::vec ui;
   arma::mat pizit; 
@@ -426,6 +426,14 @@ List upStateList(List piz, List u, int K, int tmax){
   arma::vec pizitk;
   IntegerVector whichKprev; 
   arma::vec pizitk0; 
+  double uitplus1; 
+  arma::vec whichKplus1; 
+  IntegerVector whichKnext; 
+  arma::mat pizitplus1; 
+  arma::vec f1; 
+  arma::vec f2; 
+  IntegerVector f3; 
+  IntegerVector f4; 
   
   
   // loop through individuals 
@@ -437,19 +445,16 @@ List upStateList(List piz, List u, int K, int tmax){
   t = 0; 
   pizitk0 = as<arma::vec>(pizi[t]); 
   uit = ui[t]; 
-  
   whichKtemp = as<arma::vec>(whichK); 
   whichKtemp.set_size(0);
   whichK = wrap(whichKtemp); 
-
   for(k = 0; k < K+1; ++k){
     if(pizitk0[k] >= uit){
       whichK.push_back(k); 
     }
   }
-  
   forList[t] = whichK; 
-  
+  // rest of time points 
   for(t = 1; t < tmax; ++t){
     whichKminus1 = as<arma::vec>(forList[t-1]); // vector of previous states 
     whichKprev = wrap(whichKminus1); // IntegerVector
@@ -471,7 +476,42 @@ List upStateList(List piz, List u, int K, int tmax){
     }
     forList[t] = sort_unique(whichK); 
   }
-
+  
+  // last time point 
+  backList[tmax-1] = forList[tmax-1]; 
+  for(t = tmax-2; t>=0; --t){
+    whichKplus1 = as<arma::vec>(backList[t+1]); // vector of previous states 
+    whichKnext = wrap(whichKplus1); // IntegerVector
+    uitplus1 = ui[t+1]; 
+    
+    whichKtemp = as<arma::vec>(whichK); 
+    whichKtemp.set_size(0);
+    whichK = wrap(whichKtemp); 
+    
+    pizitplus1 = as<arma::mat>(pizi[t+1]); // prob matrix for current time point 
+    for(idx = 0; idx < whichKnext.length(); ++idx){
+      tempK = whichKnext[idx]; // one previous state at a time 
+      pizitk = (pizitplus1.col(tempK)); // get the transition probs for the one previous state 
+      for(k = 0; k < K; ++k){
+        if(pizitk[k] >= uitplus1){
+          whichK.push_back(k); 
+        }
+      }
+    }
+    backList[t] = sort_unique(whichK); 
+  }
+  
+  
+  // intersect
+  for(t = 0; t < tmax; ++t){
+    f1 = as<arma::vec>(forList[t]); 
+    f2 = as<arma::vec>(backList[t]); 
+    f3 = wrap(f1);
+    f4 = wrap(f2); 
+    // needs to be a vector 
+    stateList[t] = intersect(f3, f4);
+  }
+  
   return(forList);
 }
 

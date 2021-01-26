@@ -9,9 +9,6 @@ library(Rcpp)
 library(RcppArmadillo)
 library(microbenchmark)
 
-compileAttributes()
-devtools::build()
-devtools::install()
 library(psbpHMM)
 
 library(gdata)

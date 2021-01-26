@@ -15,7 +15,7 @@ for(i in 1:n){
   back.list <- list()
   back.list[[t.max]] <- for.list[[t.max]]
   for(t in (t.max-1):1){
-    back.list[[t]] <- sort(unique(unlist(lapply(intersect(back.list[[t+1]], 1:K),
+    back.list[[t]] <- sort(unique(unlist(lapply(intersect(back.list[[t+1]], 1:K ),
                                                 FUN = function(k) which(pi.z[[i]][[t+1]][,k] >= u[[i]][t+1])))))
   }
   state.list[[i]] <- lapply(1:t.max, FUN = function(t) {
