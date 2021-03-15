@@ -17,30 +17,6 @@ rcpparma_bothproducts <- function(x) {
     .Call(`_psbpHMM_rcpparma_bothproducts`, x)
 }
 
-timesTwo <- function(x) {
-    .Call(`_psbpHMM_timesTwo`, x)
-}
-
-addTwo <- function(x) {
-    .Call(`_psbpHMM_addTwo`, x)
-}
-
-minusTwo <- function(x) {
-    .Call(`_psbpHMM_minusTwo`, x)
-}
-
-a1 <- function(x) {
-    .Call(`_psbpHMM_a1`, x)
-}
-
-a2 <- function(x) {
-    .Call(`_psbpHMM_a2`, x)
-}
-
-a8 <- function(n, r, v) {
-    .Call(`_psbpHMM_a8`, n, r, v)
-}
-
 mhDecomp <- function(L, D) {
     .Call(`_psbpHMM_mhDecomp`, L, D)
 }
@@ -69,23 +45,7 @@ upZ <- function(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax,
     .Call(`_psbpHMM_upZ`, stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d)
 }
 
-upStateList <- function(piz, u, K, tmax) {
-    .Call(`_psbpHMM_upStateList`, piz, u, K, tmax)
-}
-
-csample_num <- function(x, size, replace, prob = as.numeric( c())) {
-    .Call(`_psbpHMM_csample_num`, x, size, replace, prob)
-}
-
-csample_int <- function(x, size, replace, prob = as.numeric( c())) {
-    .Call(`_psbpHMM_csample_int`, x, size, replace, prob)
-}
-
-a3 <- function(x) {
-    .Call(`_psbpHMM_a3`, x)
-}
-
-a4 <- function(x) {
-    .Call(`_psbpHMM_a4`, x)
+upStateList <- function(piz, u, K, tmax, n) {
+    .Call(`_psbpHMM_upStateList`, piz, u, K, tmax, n)
 }
 

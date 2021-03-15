@@ -49,74 +49,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// timesTwo
-NumericVector timesTwo(NumericVector x);
-RcppExport SEXP _psbpHMM_timesTwo(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(timesTwo(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// addTwo
-NumericVector addTwo(NumericVector x);
-RcppExport SEXP _psbpHMM_addTwo(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(addTwo(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// minusTwo
-NumericVector minusTwo(NumericVector x);
-RcppExport SEXP _psbpHMM_minusTwo(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(minusTwo(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// a1
-arma::mat a1(arma::mat x);
-RcppExport SEXP _psbpHMM_a1(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(a1(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// a2
-arma::vec a2(arma::vec x);
-RcppExport SEXP _psbpHMM_a2(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(a2(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// a8
-List a8(int n, int r, double v);
-RcppExport SEXP _psbpHMM_a8(SEXP nSEXP, SEXP rSEXP, SEXP vSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< int >::type r(rSEXP);
-    Rcpp::traits::input_parameter< double >::type v(vSEXP);
-    rcpp_result_gen = Rcpp::wrap(a8(n, r, v));
-    return rcpp_result_gen;
-END_RCPP
-}
 // mhDecomp
 arma::mat mhDecomp(arma::mat L, arma::mat D);
 RcppExport SEXP _psbpHMM_mhDecomp(SEXP LSEXP, SEXP DSEXP) {
@@ -219,8 +151,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // upStateList
-List upStateList(List piz, List u, int K, int tmax);
-RcppExport SEXP _psbpHMM_upStateList(SEXP pizSEXP, SEXP uSEXP, SEXP KSEXP, SEXP tmaxSEXP) {
+List upStateList(List piz, List u, int K, int tmax, int n);
+RcppExport SEXP _psbpHMM_upStateList(SEXP pizSEXP, SEXP uSEXP, SEXP KSEXP, SEXP tmaxSEXP, SEXP nSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -228,57 +160,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type u(uSEXP);
     Rcpp::traits::input_parameter< int >::type K(KSEXP);
     Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
-    rcpp_result_gen = Rcpp::wrap(upStateList(piz, u, K, tmax));
-    return rcpp_result_gen;
-END_RCPP
-}
-// csample_num
-NumericVector csample_num(NumericVector x, int size, bool replace, NumericVector prob);
-RcppExport SEXP _psbpHMM_csample_num(SEXP xSEXP, SEXP sizeSEXP, SEXP replaceSEXP, SEXP probSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
-    Rcpp::traits::input_parameter< bool >::type replace(replaceSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type prob(probSEXP);
-    rcpp_result_gen = Rcpp::wrap(csample_num(x, size, replace, prob));
-    return rcpp_result_gen;
-END_RCPP
-}
-// csample_int
-IntegerVector csample_int(IntegerVector x, int size, bool replace, NumericVector prob);
-RcppExport SEXP _psbpHMM_csample_int(SEXP xSEXP, SEXP sizeSEXP, SEXP replaceSEXP, SEXP probSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
-    Rcpp::traits::input_parameter< bool >::type replace(replaceSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type prob(probSEXP);
-    rcpp_result_gen = Rcpp::wrap(csample_int(x, size, replace, prob));
-    return rcpp_result_gen;
-END_RCPP
-}
-// a3
-arma::mat a3(NumericMatrix x);
-RcppExport SEXP _psbpHMM_a3(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(a3(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// a4
-NumericMatrix a4(arma::mat x);
-RcppExport SEXP _psbpHMM_a4(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(a4(x));
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(upStateList(piz, u, K, tmax, n));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -288,12 +171,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_rcpparma_outerproduct", (DL_FUNC) &_psbpHMM_rcpparma_outerproduct, 1},
     {"_psbpHMM_rcpparma_innerproduct", (DL_FUNC) &_psbpHMM_rcpparma_innerproduct, 1},
     {"_psbpHMM_rcpparma_bothproducts", (DL_FUNC) &_psbpHMM_rcpparma_bothproducts, 1},
-    {"_psbpHMM_timesTwo", (DL_FUNC) &_psbpHMM_timesTwo, 1},
-    {"_psbpHMM_addTwo", (DL_FUNC) &_psbpHMM_addTwo, 1},
-    {"_psbpHMM_minusTwo", (DL_FUNC) &_psbpHMM_minusTwo, 1},
-    {"_psbpHMM_a1", (DL_FUNC) &_psbpHMM_a1, 1},
-    {"_psbpHMM_a2", (DL_FUNC) &_psbpHMM_a2, 1},
-    {"_psbpHMM_a8", (DL_FUNC) &_psbpHMM_a8, 3},
     {"_psbpHMM_mhDecomp", (DL_FUNC) &_psbpHMM_mhDecomp, 2},
     {"_psbpHMM_invMat", (DL_FUNC) &_psbpHMM_invMat, 1},
     {"_psbpHMM_updatePi", (DL_FUNC) &_psbpHMM_updatePi, 5},
@@ -301,11 +178,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_returnPi", (DL_FUNC) &_psbpHMM_returnPi, 0},
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},
-    {"_psbpHMM_upStateList", (DL_FUNC) &_psbpHMM_upStateList, 4},
-    {"_psbpHMM_csample_num", (DL_FUNC) &_psbpHMM_csample_num, 4},
-    {"_psbpHMM_csample_int", (DL_FUNC) &_psbpHMM_csample_int, 4},
-    {"_psbpHMM_a3", (DL_FUNC) &_psbpHMM_a3, 1},
-    {"_psbpHMM_a4", (DL_FUNC) &_psbpHMM_a4, 1},
+    {"_psbpHMM_upStateList", (DL_FUNC) &_psbpHMM_upStateList, 5},
     {NULL, NULL, 0}
 };
 

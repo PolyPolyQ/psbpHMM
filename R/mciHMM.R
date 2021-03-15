@@ -30,7 +30,7 @@
 #' @return list of results 
 #' @export
 #'
-fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
+mciHMM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
                         priors=NULL, K.start=NULL, z.true=NULL, lod=NULL,
                         mu.true=NULL, missing = FALSE, 
                         tau2 = 0.1, a.tune = 10, b.tune = 1,
@@ -354,7 +354,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
   ###############
   ### Sampler ###
   ###############
-  start.time = Sys.time()
+  #start.time = Sys.time()
   for(s in 1:niter){
     
     #####################
@@ -382,34 +382,12 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
       }))
     }
     
-    #############################################
-    ### update the possible states for each t ###  ### done
-    #############################################
     
-    # this is slow: write this is C++
-    
-    state.list <- list()
-    # state.list is a list of states that belong to some possible trajectory for each time point
-    for(i in 1:n){
-      # forward condition: considering the previous possible states, what are the current possible states?
-      for.list <- list()
-      for.list[[1]] <- which(pi.z[[i]][[1]] >= u[[i]][1])
-      for(t in 2:t.max){
-        
-        for.list[[t]] <- sort(unique(unlist(lapply(intersect(for.list[[t-1]], 1:K),
-                                                   FUN = function(k) which(pi.z[[i]][[t]][k,] >= u[[i]][t])))))
-      }
-      # backward condition
-      back.list <- list()
-      back.list[[t.max]] <- for.list[[t.max]]
-      for(t in (t.max-1):1){
-        back.list[[t]] <- sort(unique(unlist(lapply(intersect(back.list[[t+1]], 1:K),
-                                                    FUN = function(k) which(pi.z[[i]][[t+1]][,k] >= u[[i]][t+1])))))
-      }
-      state.list[[i]] <- lapply(1:t.max, FUN = function(t) {
-        return(intersect(for.list[[t]], back.list[[t]]))
-      })
-    }
+    #############################
+    ### update StateList Rcpp ###
+    #############################
+  
+    state.list <- upStateList(piz = pi.z, u = u, K = K, tmax = t.max, n = n)
     
     ######################
     ### Sample Z: Rcpp ### 
@@ -756,7 +734,6 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     #######################
     
     ### this is slow: C++
-    
     alpha.jk <- lapply(1:(K), FUN = function(j){
       unlist(lapply(1:(K), FUN = function(k){
         updateAlphaJK(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
@@ -1018,6 +995,7 @@ fitMarkovRM <- function(niter, nburn, y, rmlist, ycomplete=NULL, X,
     }else{
       ham <- NULL
     }    
+    
     
     ## MSE for mu ##
     if(!is.null(mu.true)){

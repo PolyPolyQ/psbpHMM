@@ -8,12 +8,9 @@ gc()
 library(Rcpp)
 library(RcppArmadillo)
 library(microbenchmark)
-
 library(psbpHMM)
-
 library(gdata)
 library(invgamma)
-#library(markovPSBP) # this brings in all my other functions yay! 
 library(gtools)
 library(mvtnorm)
 library(matrixcalc)
@@ -35,7 +32,7 @@ set.seed(22*simnum)
 ### Simulate Data ###
 #####################
 
-n = 5 # sampling days
+n = 20 # sampling days
 t.max <- 288
 lodmis <- 0.05
 marmis <- 0.05
@@ -55,59 +52,55 @@ for(i in 1:n){
 }
 X = X1
 q <- ncol(X[[1]])
-
-
 p <- 3 
 
-
 ## repeated measures test 
-rmlist = c(rep(1,5), rep(2,5), rep(3,6), rep(4,5), rep(5,5), rep(6,5),
-            rep(7,9), rep(8, 5), rep(9,5))
-rmlist = NULL
+# rmlist = c(rep(1,5), rep(2,5), rep(3,6), rep(4,5), rep(5,5), rep(6,5),
+#             rep(7,9), rep(8, 5), rep(9,5))
+
 
 #################################
 ### Set Priors and Parameters ###
 #################################
 
-priors = list(nu = p+2, R = diag(p), m0 = 0, v0 = 1)
-
 niter = 50
 nburn = 25
-len.imp = 4
+y = dat1$y
+rmlist = NULL
+ycomplete = dat1$y.complete
+priors = list(nu = p+2, R = diag(p), m0 = 0, v0 = 1)
 K.start = NULL
+z.true = dat1$z.true
+lod = dat1$lod
+mu.true = dat1$mu.true
 missing = TRUE 
-
 tau2 = .25 
 a.tune = 10
 b.tune = 1
-
-y <- dat1$y
-ycomplete <- dat1$y.complete
-z.true <- dat1$z.true
-lod <- dat1$lod
-mu.true <- dat1$mu.true
 resK = TRUE
 eta.star = 3
-
-#################
-### Fit Model ###
-#################
-
-fitMarkovRM <- function(niter=niter, nburn=nburn, y=y, rmlist=rmlist, ycomplete=ycomplete, X=X,
-                        priors=priors, K.start=K.start, z.true=z.true, lod=lod,
-                        mu.true=mu.true, missing = missing, 
-                        tau2 = tau2, a.tune = a.tunee, b.tune = b.tune,
-                        resK = resK, eta.star = eta.star, len.imp = len.imp)
+len.imp = 4
 
 
+st1 = Sys.time()
+mciHMM(niter=niter, nburn=nburn, y=y, rmlist=rmlist, ycomplete=ycomplete, X=X,
+                   priors=priors, K.start=K.start, z.true=z.true, lod=lod,
+                   mu.true=mu.true, missing = missing, 
+                   tau2 = tau2, a.tune = a.tune, b.tune = b.tune,
+                   resK = resK, eta.star = eta.star, len.imp = len.imp)
+en1 = Sys.time()
+en1-st1
 
+library(markovPSBP) # this brings in all my other functions yay! 
+X1 = X[[1]]
 
-## need to bring the data and FCCS repeaated measures script over here and 
-## run the 50 sample data analysis 
-## then try to make some functions faster so you can do some sensitivity analyses
-## also need to redo the validation study simulations because you found one bug
-## in the repeated measures function
-
-
+st2 = Sys.time()
+fitMarkovSame(niter=niter, nburn=nburn, y=y, ycomplete=ycomplete, X=X1,
+       priors=priors, K.start=K.start, z.true=z.true, lod=lod,
+       mu.true=mu.true, missing = missing, 
+       tau2 = tau2, a.tune = a.tune, b.tune = b.tune,
+       resK = resK, eta.star = eta.star, len.imp = len.imp)
+en2 = Sys.time()
+en2-st2
 
 

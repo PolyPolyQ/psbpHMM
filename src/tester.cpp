@@ -14,47 +14,6 @@ using namespace Rcpp;
 //   http://gallery.rcpp.org/
 //
 
-// [[Rcpp::export]]
-NumericVector timesTwo(NumericVector x) {
-  return x * 2;
-}
-
-// [[Rcpp::export]]
-NumericVector addTwo(NumericVector x) {
-  return x + 2;
-}
-
-// [[Rcpp::export]]
-NumericVector minusTwo(NumericVector x) {
-  return x - 2;
-}
-
-// [[Rcpp::export]]
-arma::mat a1(arma::mat x) {
-  return(x) ;
-}
-
-// [[Rcpp::export]]
-arma::vec a2(arma::vec x) {
-  return(x) ;
-}
-
-// [[Rcpp::export]]
-List a8(int n, int r, double v) {
-  arma::mat x1 ;
-  x1.print() ;
-  x1.reshape(n, r) ;
-  x1.fill(v) ;
-  arma::mat x2(n, r) ;
-  x2.fill(v) ;
-  arma::mat x3 = x2 ;
-  x3.reshape(n, r) ;
-  List ret ;
-  ret["x1"] = x1 ;
-  ret["x2"] = x2 ;
-  ret["x3"] = x3 ;
-  return(ret) ;
-}
 
 // [[Rcpp::export]]
 arma::mat mhDecomp(arma::mat L, arma::mat D) {
@@ -406,18 +365,16 @@ List upZ(List stateList, List y, List mu, List Sigma, double logStuff, double nu
 }
 
 // [[Rcpp::export]]
-List upStateList(List piz, List u, int K, int tmax){
+List upStateList(List piz, List u, int K, int tmax, int n){
   
-  List stateList(tmax); 
-  List forList(tmax); 
-  List backList(tmax);
+  List stateListAll(n);
+  
   List pizi;
   arma::vec ui;
   arma::mat pizit; 
   double uit;
   int k;
   int t; 
-  int i; 
   arma::vec whichKtemp; 
   IntegerVector whichK(0);
   int idx; 
@@ -437,116 +394,91 @@ List upStateList(List piz, List u, int K, int tmax){
   
   
   // loop through individuals 
-  i = 0; 
-  ui = as<arma::vec>(u[i]);
-  pizi = piz[i]; // list
-  
-  // first time point 
-  t = 0; 
-  pizitk0 = as<arma::vec>(pizi[t]); 
-  uit = ui[t]; 
-  whichKtemp = as<arma::vec>(whichK); 
-  whichKtemp.set_size(0);
-  whichK = wrap(whichKtemp); 
-  for(k = 0; k < K+1; ++k){
-    if(pizitk0[k] >= uit){
-      whichK.push_back(k); 
-    }
-  }
-  forList[t] = whichK; 
-  // rest of time points 
-  for(t = 1; t < tmax; ++t){
-    whichKminus1 = as<arma::vec>(forList[t-1]); // vector of previous states 
-    whichKprev = wrap(whichKminus1); // IntegerVector
+  for(int i = 0; i < n; ++i){
+    
+    List stateList(tmax); 
+    List forList(tmax); 
+    List backList(tmax);
+    
+    ui = as<arma::vec>(u[i]);
+    pizi = piz[i]; // list
+    
+    // first time point 
+    t = 0; 
+    pizitk0 = as<arma::vec>(pizi[t]); 
     uit = ui[t]; 
     whichKtemp = as<arma::vec>(whichK); 
     whichKtemp.set_size(0);
     whichK = wrap(whichKtemp); 
-    pizit = as<arma::mat>(pizi[t]); // prob matrix for current time point 
-    for(idx = 0; idx < whichKprev.length(); ++idx){
-      tempK = whichKprev[idx]; // one previous state at a time 
-      if(tempK < K){ // can't go from a new state 
-        pizitk = (pizit.row(tempK)).t(); // get the transition probs for the one previous state 
-        for(k = 0; k < K+1; ++k){
-          if(pizitk[k] >= uit){
+    for(k = 0; k < K+1; ++k){
+      if(pizitk0[k] >= uit){
+        whichK.push_back(k); 
+      }
+    }
+    forList[t] = whichK; 
+    // rest of time points 
+    for(t = 1; t < tmax; ++t){
+      whichKminus1 = as<arma::vec>(forList[t-1]); // vector of previous states 
+      whichKprev = wrap(whichKminus1); // IntegerVector
+      uit = ui[t]; 
+      whichKtemp = as<arma::vec>(whichK); 
+      whichKtemp.set_size(0);
+      whichK = wrap(whichKtemp); 
+      pizit = as<arma::mat>(pizi[t]); // prob matrix for current time point 
+      for(idx = 0; idx < whichKprev.length(); ++idx){
+        tempK = whichKprev[idx]; // one previous state at a time 
+        if(tempK < K){ // can't go from a new state 
+          pizitk = (pizit.row(tempK)).t(); // get the transition probs for the one previous state 
+          for(k = 0; k < K+1; ++k){
+            if(pizitk[k] >= uit){
+              whichK.push_back(k); 
+            }
+          }
+        }
+      }
+      forList[t] = sort_unique(whichK); 
+    }
+    
+    // last time point 
+    backList[tmax-1] = forList[tmax-1]; 
+    for(t = tmax-2; t>=0; --t){
+      whichKplus1 = as<arma::vec>(backList[t+1]); // vector of previous states 
+      whichKnext = wrap(whichKplus1); // IntegerVector
+      uitplus1 = ui[t+1]; 
+      
+      whichKtemp = as<arma::vec>(whichK); 
+      whichKtemp.set_size(0);
+      whichK = wrap(whichKtemp); 
+      
+      pizitplus1 = as<arma::mat>(pizi[t+1]); // prob matrix for current time point 
+      for(idx = 0; idx < whichKnext.length(); ++idx){
+        tempK = whichKnext[idx]; // one previous state at a time 
+        pizitk = (pizitplus1.col(tempK)); // get the transition probs for the one previous state 
+        for(k = 0; k < K; ++k){
+          if(pizitk[k] >= uitplus1){
             whichK.push_back(k); 
           }
         }
       }
+      backList[t] = sort_unique(whichK); 
     }
-    forList[t] = sort_unique(whichK); 
-  }
-  
-  // last time point 
-  backList[tmax-1] = forList[tmax-1]; 
-  for(t = tmax-2; t>=0; --t){
-    whichKplus1 = as<arma::vec>(backList[t+1]); // vector of previous states 
-    whichKnext = wrap(whichKplus1); // IntegerVector
-    uitplus1 = ui[t+1]; 
     
-    whichKtemp = as<arma::vec>(whichK); 
-    whichKtemp.set_size(0);
-    whichK = wrap(whichKtemp); 
-    
-    pizitplus1 = as<arma::mat>(pizi[t+1]); // prob matrix for current time point 
-    for(idx = 0; idx < whichKnext.length(); ++idx){
-      tempK = whichKnext[idx]; // one previous state at a time 
-      pizitk = (pizitplus1.col(tempK)); // get the transition probs for the one previous state 
-      for(k = 0; k < K; ++k){
-        if(pizitk[k] >= uitplus1){
-          whichK.push_back(k); 
-        }
-      }
+    // intersect
+    for(t = 0; t < tmax; ++t){
+      f1 = as<arma::vec>(forList[t]); 
+      f2 = as<arma::vec>(backList[t]); 
+      f3 = wrap(f1);
+      f4 = wrap(f2); 
+      // needs to be a vector 
+      stateList[t] = sort_unique(intersect(f3, f4))+1;
     }
-    backList[t] = sort_unique(whichK); 
+
+    stateListAll[i] = stateList;
+    
   }
   
-  
-  // intersect
-  for(t = 0; t < tmax; ++t){
-    f1 = as<arma::vec>(forList[t]); 
-    f2 = as<arma::vec>(backList[t]); 
-    f3 = wrap(f1);
-    f4 = wrap(f2); 
-    // needs to be a vector 
-    stateList[t] = sort_unique(intersect(f3, f4))+1;
-  }
-  
-  return(stateList);
+  return(stateListAll);
 }
-
-
-// [[Rcpp::export]]
-NumericVector csample_num( NumericVector x,
-                           int size,
-                           bool replace,
-                           NumericVector prob = NumericVector::create()) {
-  NumericVector ret = RcppArmadillo::sample(x, size, replace, prob);
-  return(ret);
-}
-
-// [[Rcpp::export]]
-IntegerVector csample_int( IntegerVector x,
-                           int size,
-                           bool replace,
-                           NumericVector prob = NumericVector::create()) {
-  IntegerVector ret = RcppArmadillo::sample(x, size, replace, prob);
-  return(ret);
-}
-
-
-// [[Rcpp::export]]
-arma::mat a3(NumericMatrix x) {
-  arma::mat y = as<arma::mat>(x) ;
-  return(y) ;
-}
-
-// [[Rcpp::export]]
-NumericMatrix a4(arma::mat x) {
-  NumericMatrix y = wrap(x) ;
-  return(y) ;
-}
-
 
 // You can include R code blocks in C++ files processed with sourceCpp
 // (useful for testing and development). The R code will be automatically 
