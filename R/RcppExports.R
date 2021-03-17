@@ -49,3 +49,11 @@ upStateList <- function(piz, u, K, tmax, n) {
     .Call(`_psbpHMM_upStateList`, piz, u, K, tmax, n)
 }
 
+createMat <- function(n, niter, Zmat) {
+    .Call(`_psbpHMM_createMat`, n, niter, Zmat)
+}
+
+vectorMean <- function(a, b) {
+    .Call(`_psbpHMM_vectorMean`, a, b)
+}
+

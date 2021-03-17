@@ -165,6 +165,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// createMat
+NumericMatrix createMat(int n, int niter, NumericMatrix Zmat);
+RcppExport SEXP _psbpHMM_createMat(SEXP nSEXP, SEXP niterSEXP, SEXP ZmatSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Zmat(ZmatSEXP);
+    rcpp_result_gen = Rcpp::wrap(createMat(n, niter, Zmat));
+    return rcpp_result_gen;
+END_RCPP
+}
+// vectorMean
+double vectorMean(NumericVector a, NumericVector b);
+RcppExport SEXP _psbpHMM_vectorMean(SEXP aSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(vectorMean(a, b));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_rcpparma_hello_world", (DL_FUNC) &_psbpHMM_rcpparma_hello_world, 0},
@@ -179,6 +204,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},
     {"_psbpHMM_upStateList", (DL_FUNC) &_psbpHMM_upStateList, 5},
+    {"_psbpHMM_createMat", (DL_FUNC) &_psbpHMM_createMat, 3},
+    {"_psbpHMM_vectorMean", (DL_FUNC) &_psbpHMM_vectorMean, 2},
     {NULL, NULL, 0}
 };
 

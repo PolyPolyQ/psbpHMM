@@ -480,6 +480,72 @@ List upStateList(List piz, List u, int K, int tmax, int n){
   return(stateListAll);
 }
 
+
+// [[Rcpp::export]]
+NumericMatrix createMat(int n, int niter, NumericMatrix Zmat){
+  //NumericMatrix x(n, niter);
+  
+  int i;
+  int j;
+  LogicalVector c(niter); 
+  NumericVector a; 
+  NumericVector b;
+  NumericMatrix Prob(n,n);
+  
+  for(i = 0; i < n; ++i){
+    for(j = 0; j <= i; ++j){
+      a = Zmat(_,i);
+      b = Zmat(_,j); 
+      for(int k=0; k<niter; ++k){
+        c[k] = (a[k]==b[k]);
+      }
+      double d = mean(c);
+      Prob(i,j) = d; 
+      Prob(j,i) = d;
+    }
+  }
+  return(Prob); 
+}
+
+// [[Rcpp::export]]
+List lsDist(int niter, int K, int n, NumericMatrix Z, NumericMatrix Prob){
+  
+  LogicalMatrix S(n);
+  
+  for(int i = 0; i < n; ++i){
+    for(int j = 0; j < n; ++j){
+      // loop through, which ones are the same? 
+      // put a 1 in that spot of S 
+    }
+  }
+  
+  List k; 
+  return(k);
+  
+}
+
+
+
+// [[Rcpp::export]]
+double vectorMean(NumericVector a, NumericVector b){
+  
+  int n = a.length();
+  
+  LogicalVector c(n); 
+  
+  for(int i=0; i<n; ++i){
+    c[i] = (a[i]==b[i]);
+  }
+  
+  double d = mean(c); 
+  
+  return(d); 
+  
+}
+
+
+
+
 // You can include R code blocks in C++ files processed with sourceCpp
 // (useful for testing and development). The R code will be automatically 
 // run after the compilation.
