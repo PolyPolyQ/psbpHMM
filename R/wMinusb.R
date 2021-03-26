@@ -1,4 +1,4 @@
-#' Calcuate W minus Xbeta
+#' Calculate W minus Xbeta
 #'
 #' @param i time series
 #' @param t time point

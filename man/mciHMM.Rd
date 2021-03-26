@@ -2,13 +2,13 @@
 % Please edit documentation in R/mciHMM.R
 \name{mciHMM}
 \alias{mciHMM}
-\title{Fit mc-iHMM with covariates and/or repeated measures}
+\title{Fit mc-iHMM with X defined (covariates, harmonic trend) with or without repeated measures}
 \usage{
 mciHMM(
   niter,
   nburn,
   y,
-  rmlist,
+  rmlist = NULL,
   ycomplete = NULL,
   X,
   priors = NULL,
@@ -17,12 +17,12 @@ mciHMM(
   lod = NULL,
   mu.true = NULL,
   missing = FALSE,
-  tau2 = 0.1,
-  a.tune = 10,
-  b.tune = 1,
+  tau2 = NULL,
+  a.tune = NULL,
+  b.tune = NULL,
   resK = FALSE,
   eta.star = NULL,
-  len.imp = 1
+  len.imp = NULL
 )
 }
 \arguments{
@@ -66,5 +66,5 @@ mciHMM(
 list of results
 }
 \description{
-Fit mc-iHMM with covariates and/or repeated measures
+Fit mc-iHMM with X defined (covariates, harmonic trend) with or without repeated measures
 }

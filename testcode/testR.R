@@ -13,36 +13,30 @@ devtools::build()
 devtools::install()
 library(psbpHMM)
 
-createMat(4,5)
-dim(Z_mat)
+X.save = X
+X = X[[1]]
+X = X.save
+t.max = 20
 
-t1 <- c(1,1,2,2,2,1,1,1)
-t2 <- c(1,1,1,1,1,1,1,1)
-t3 <- c(2,2,2,2,2,1,1,1)
+### this is slow: C++
+alpha.jk <- lapply(1:(K), FUN = function(j){
+  unlist(lapply(1:(K), FUN = function(k){
+    updateAlphaJK(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
+                  sig2inv.alpha = sig2inv.alpha, w.z = w.z, X = X, beta.k = beta.k,
+                  beta.sk = beta.sk, m.alpha = m.alpha, mu.alpha = priors$mu.alpha)
+  }))
+})
 
-Ztest = cbind(t1, t2, t3); Ztest
-createMat(n=3, niter = 8, Zmat = Ztest)
+# for each t, w.z gives me a VECTOR based on the previous time point and values up to the current time point
+# so each w.z[[t]] should be a VECTOR of length z_t
 
-vectorMean(t1, t2)
-
-# create similarity matrix S for each clustering in Z_keep
-# 1 in the i,j location if i and j were clustered together at that iteration 
-# calculate squared distance from S to P
-LSdist <- rep(NA, niter)
-for (s in 1:niter){
-  print(s)
-  S <- matrix(0, n, n)
-  for (k in 1:K){
-    S[which(Z_mat[s,] == k), which(Z_mat[s,] == k)] <- 1
+### this is slow: C++
+w.z <- list()
+for(i in 1:n){
+  w.z[[i]] <- list()
+  for(t in 1:t.max){
+    w.z[[i]][[t]] <- sapply(1:z[[i]][t], FUN = function(l) updateW(t=t, l=l, i=i, alpha.0k=alpha.0k, X=X[[i]], 
+                                                                   beta.k=beta.k, beta.sk = beta.sk[[i]], 
+                                                                   alpha.jk=alpha.jk, z=z))
   }
-  LSdist[s] <- sum( (S - Prob)^2 )
 }
-
-
-
-
-
-a <- c(1,1,2,3,4,4,4)
-b <- c(1,1,3,2,4,4,5)
-
-vectorMean(a,b)

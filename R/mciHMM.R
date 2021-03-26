@@ -105,8 +105,6 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   if(is.null(priors$mu.beta)) priors$mu.beta <- rep(0, q) 
   if(is.null(priors$Sigma.beta)) priors$Sigma.beta <- diag(q) 
   if(!is.null(X)) priors$SigInv.beta <- invMat(priors$Sigma.beta) # cppFunction
-  
-  
   # subject specific beta if repeated measures 
   if(!is.null(rmlist)){
     # beta_sk
@@ -117,10 +115,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     if(is.null(priors$a.kappa)) priors$a.kappa <- 1 # shape for kap2inv 
     if(is.null(priors$b.kappa)) priors$b.kappa <- 1 # rate for kap2inv 
   }
-  
-  
-  
-  # hyperiors on alpha
+  # hyperpriors on alpha
   if(is.null(priors$a1)) priors$a1 <- 1 # shape for sig2inv.alpha
   if(is.null(priors$b1)) priors$b1 <- 1 # rate for sig2inv.alpha
   if(is.null(priors$a2)) priors$a2 <- 1 # shape for vinv.alpha
@@ -241,7 +236,8 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       # make a C++ function for solve 
       #Sigma[[k]] <- solve(L[[k]])%*%D[[k]]%*%t(solve(L[[k]])) 
       Sigma[[k]] <- mhDecomp(L[[k]], D[[k]]) # cppFunction
-      mu[[k]] <- mvnfast::rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
+      mu[[k]] <- rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
+      #mu[[k]] <- mvnfast::rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
     }else{
       Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = invMat(R.mat)),p,p)))
       mu[[k]] <- rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
@@ -258,7 +254,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   
   # beta
   beta.k <- list() # regression coefficients
-  for(k in 1:(K)){
+  for(k in 1:K){
     alpha.jk[[k]] <- rnorm(K, priors$mu.alpha, sqrt(1/sig2inv.alpha))
     alpha.jk[[k]][k] <- priors$m0
     beta.k[[k]] <- matrix(rmvn(1, priors$mu.beta, priors$Sigma.beta), nrow = q, ncol = 1) # length q
@@ -280,7 +276,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       beta.sk[[i]] = beta.ik[[rmlist[i]]]
     }
   }
-  # beta.k is beta.sk 
+
   
   ################################
   ### update transition matrix ###
@@ -349,6 +345,20 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     mar.sum.bias <- rep(NA, len.imp)
     lod.sum.bias <- rep(NA, len.imp)
     s.imp <- 1
+  }else{
+    imputes = 0
+    y.mar.save <- NULL
+    y.lod.save <- NULL
+    mar.mse <- NULL
+    lod.mse <- NULL
+    mar.sse <- NULL
+    lod.sse <- NULL
+    miss.mse <- NULL
+    mar.bias <- NULL
+    lod.bias <- NULL
+    mar.sum.bias <- NULL
+    lod.sum.bias <- NULL
+    s.imp <- NULL
   }
 
   
@@ -359,6 +369,17 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   ###############
   #start.time = Sys.time()
   for(s in 1:niter){
+    
+    
+    # par(mfrow = c(2,2))
+    # plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
+    # abline(h = lod[1])
+    # plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z.true[[1]])
+    # abline(h = lod[1])
+    # plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
+    # abline(h = lod[1])
+    # plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z.true[[2]])
+    # abline(h = lod[1])
     
     #####################
     ### initial stuff ### ### done 
@@ -371,7 +392,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     
     
     ################
-    ### update u ### ### done 
+    ### update u ### ### Rcpp
     ################
     
     u <- list()
@@ -386,9 +407,9 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     }
     
     
-    #############################
-    ### update StateList Rcpp ###
-    #############################
+    ###############################
+    ### update State List: Rcpp ###
+    ###############################
   
     state.list <- upStateList(piz = pi.z, u = u, K = K, tmax = t.max, n = n)
     
@@ -528,7 +549,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
     
     ######################
-    ### update theta_k ###
+    ### update theta_k ### ### Rcpp 
     ######################
     
     # first update mu and Sigma 
@@ -553,7 +574,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
           M <- R.mat + (nkk.tilde-1)*cov(yk) 
         }
         Sigma_nk <- M + (priors$lambda*nkk.tilde)/(nkk.tilde + priors$lambda)*tcrossprod(ybark - priors$mu0) 
-        Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1,df=nu_nk, Sigma=invMat(Sigma_nk))),p,p))
+        Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1,df=nu_nk, Sigma=invMat(Sigma_nk)),p,p)))
         mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
         
       }else if(algorithm == "MH"){
@@ -682,13 +703,14 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     }
     
     ################
-    ### update W ### 
+    ### update W ### ### Rcpp  
     ################
     
     # for each t, w.z gives me a VECTOR based on the previous time point and values up to the current time point
     # so each w.z[[t]] should be a VECTOR of length z_t
     
     ### this is slow: C++
+    set.seed(1234)
     w.z <- list()
     for(i in 1:n){
       w.z[[i]] <- list()
@@ -698,7 +720,10 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
                                                                        alpha.jk=alpha.jk, z=z))
       }
     }
+
+
     
+  
     
     #######################
     ### update alpha.0k ### ### done 
@@ -914,7 +939,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       }
       a.kap <- priors$a.kappa + n.sub*K/2
       b.kap <- priors$b.kappa + (1/2)*ssbetaik
-      kap2inv <- rgamma(1, a.kap, b.kap); 1/kap2inv  
+      kap2inv <- rgamma(1, a.kap, b.kap) 
       
     }
    

@@ -44,18 +44,16 @@ bestClusteriHMM <- function(ihmm){
   # create similarity matrix S for each clustering in Z_keep
   # 1 in the i,j location if i and j were clustered together at that iteration 
   # calculate squared distance from S to P
-  LSdist <- rep(NA, niter)
-  for (s in 1:niter){
-    print(s)
+  lstest = sapply(1:niter, FUN = function(s){
     S <- matrix(0, n, n)
     for (k in 1:K){
       S[which(Z_mat[s,] == k), which(Z_mat[s,] == k)] <- 1
     }
-    LSdist[s] <- sum( (S - Prob)^2 )
-  }
-  
+    return(sum( (S - Prob)^2 ))
+  })
   # select Z_keep that corresponds to the S that minimizes LS distance to P
-  best <- which.min(LSdist)
+  best <- which.min(lstest)
+  
   Zbest <- Z_mat[best,]
   # relist by person 
   

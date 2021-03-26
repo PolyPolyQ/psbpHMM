@@ -17,12 +17,12 @@ rcpparma_bothproducts <- function(x) {
     .Call(`_psbpHMM_rcpparma_bothproducts`, x)
 }
 
-mhDecomp <- function(L, D) {
-    .Call(`_psbpHMM_mhDecomp`, L, D)
-}
-
 invMat <- function(x) {
     .Call(`_psbpHMM_invMat`, x)
+}
+
+mhDecomp <- function(L, D) {
+    .Call(`_psbpHMM_mhDecomp`, L, D)
 }
 
 updatePi <- function(beta, X, a0, ajk, tmax) {
@@ -45,12 +45,24 @@ upZ <- function(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax,
     .Call(`_psbpHMM_upZ`, stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d)
 }
 
+upZnox <- function(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d) {
+    .Call(`_psbpHMM_upZnox`, stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d)
+}
+
 upStateList <- function(piz, u, K, tmax, n) {
     .Call(`_psbpHMM_upStateList`, piz, u, K, tmax, n)
 }
 
+upStateListnox <- function(piz, u, K, tmax, n) {
+    .Call(`_psbpHMM_upStateListnox`, piz, u, K, tmax, n)
+}
+
 createMat <- function(n, niter, Zmat) {
     .Call(`_psbpHMM_createMat`, n, niter, Zmat)
+}
+
+minDist <- function(niter, K, n, Z, Prob) {
+    .Call(`_psbpHMM_minDist`, niter, K, n, Z, Prob)
 }
 
 vectorMean <- function(a, b) {

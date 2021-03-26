@@ -49,6 +49,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// invMat
+arma::mat invMat(arma::mat x);
+RcppExport SEXP _psbpHMM_invMat(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(invMat(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 // mhDecomp
 arma::mat mhDecomp(arma::mat L, arma::mat D);
 RcppExport SEXP _psbpHMM_mhDecomp(SEXP LSEXP, SEXP DSEXP) {
@@ -58,17 +69,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type L(LSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type D(DSEXP);
     rcpp_result_gen = Rcpp::wrap(mhDecomp(L, D));
-    return rcpp_result_gen;
-END_RCPP
-}
-// invMat
-arma::mat invMat(arma::mat x);
-RcppExport SEXP _psbpHMM_invMat(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(invMat(x));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -150,6 +150,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// upZnox
+List upZnox(List stateList, List y, List mu, List Sigma, double logStuff, double nudf, List detRstar, List piz, List u, int tmax, int K, int n, double d);
+RcppExport SEXP _psbpHMM_upZnox(SEXP stateListSEXP, SEXP ySEXP, SEXP muSEXP, SEXP SigmaSEXP, SEXP logStuffSEXP, SEXP nudfSEXP, SEXP detRstarSEXP, SEXP pizSEXP, SEXP uSEXP, SEXP tmaxSEXP, SEXP KSEXP, SEXP nSEXP, SEXP dSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type stateList(stateListSEXP);
+    Rcpp::traits::input_parameter< List >::type y(ySEXP);
+    Rcpp::traits::input_parameter< List >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< List >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< double >::type logStuff(logStuffSEXP);
+    Rcpp::traits::input_parameter< double >::type nudf(nudfSEXP);
+    Rcpp::traits::input_parameter< List >::type detRstar(detRstarSEXP);
+    Rcpp::traits::input_parameter< List >::type piz(pizSEXP);
+    Rcpp::traits::input_parameter< List >::type u(uSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< double >::type d(dSEXP);
+    rcpp_result_gen = Rcpp::wrap(upZnox(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d));
+    return rcpp_result_gen;
+END_RCPP
+}
 // upStateList
 List upStateList(List piz, List u, int K, int tmax, int n);
 RcppExport SEXP _psbpHMM_upStateList(SEXP pizSEXP, SEXP uSEXP, SEXP KSEXP, SEXP tmaxSEXP, SEXP nSEXP) {
@@ -165,6 +188,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// upStateListnox
+List upStateListnox(List piz, List u, int K, int tmax, int n);
+RcppExport SEXP _psbpHMM_upStateListnox(SEXP pizSEXP, SEXP uSEXP, SEXP KSEXP, SEXP tmaxSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type piz(pizSEXP);
+    Rcpp::traits::input_parameter< List >::type u(uSEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(upStateListnox(piz, u, K, tmax, n));
+    return rcpp_result_gen;
+END_RCPP
+}
 // createMat
 NumericMatrix createMat(int n, int niter, NumericMatrix Zmat);
 RcppExport SEXP _psbpHMM_createMat(SEXP nSEXP, SEXP niterSEXP, SEXP ZmatSEXP) {
@@ -175,6 +213,21 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type Zmat(ZmatSEXP);
     rcpp_result_gen = Rcpp::wrap(createMat(n, niter, Zmat));
+    return rcpp_result_gen;
+END_RCPP
+}
+// minDist
+int minDist(int niter, int K, int n, NumericMatrix Z, NumericMatrix Prob);
+RcppExport SEXP _psbpHMM_minDist(SEXP niterSEXP, SEXP KSEXP, SEXP nSEXP, SEXP ZSEXP, SEXP ProbSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Prob(ProbSEXP);
+    rcpp_result_gen = Rcpp::wrap(minDist(niter, K, n, Z, Prob));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -196,15 +249,18 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_rcpparma_outerproduct", (DL_FUNC) &_psbpHMM_rcpparma_outerproduct, 1},
     {"_psbpHMM_rcpparma_innerproduct", (DL_FUNC) &_psbpHMM_rcpparma_innerproduct, 1},
     {"_psbpHMM_rcpparma_bothproducts", (DL_FUNC) &_psbpHMM_rcpparma_bothproducts, 1},
-    {"_psbpHMM_mhDecomp", (DL_FUNC) &_psbpHMM_mhDecomp, 2},
     {"_psbpHMM_invMat", (DL_FUNC) &_psbpHMM_invMat, 1},
+    {"_psbpHMM_mhDecomp", (DL_FUNC) &_psbpHMM_mhDecomp, 2},
     {"_psbpHMM_updatePi", (DL_FUNC) &_psbpHMM_updatePi, 5},
     {"_psbpHMM_updatePi_rm", (DL_FUNC) &_psbpHMM_updatePi_rm, 6},
     {"_psbpHMM_returnPi", (DL_FUNC) &_psbpHMM_returnPi, 0},
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},
+    {"_psbpHMM_upZnox", (DL_FUNC) &_psbpHMM_upZnox, 13},
     {"_psbpHMM_upStateList", (DL_FUNC) &_psbpHMM_upStateList, 5},
+    {"_psbpHMM_upStateListnox", (DL_FUNC) &_psbpHMM_upStateListnox, 5},
     {"_psbpHMM_createMat", (DL_FUNC) &_psbpHMM_createMat, 3},
+    {"_psbpHMM_minDist", (DL_FUNC) &_psbpHMM_minDist, 5},
     {"_psbpHMM_vectorMean", (DL_FUNC) &_psbpHMM_vectorMean, 2},
     {NULL, NULL, 0}
 };

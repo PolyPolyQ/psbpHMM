@@ -74,26 +74,6 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   beta.k <- NULL
   q <- 0
   
-  #################
-  ### Functions ###
-  #################
-  
-  fun1 <- function(){
-    first1 = sapply(1:K, FUN = function(k) pnorm(alpha.0k[k]))
-    second1 = sapply(1:(K-1), FUN = function(k) 1-pnorm(alpha.0k[k]))
-    prod1 = c(1, cumprod(second1))
-    c(first1*prod1, 1 - sum(first1*prod1))
-  }
-  
-  fun2 <- function(){
-    t(sapply(1:(K), FUN = function(j){
-      first = sapply(1:K, FUN = function(k) pnorm(alpha.jk[[j]][k]))
-      second = sapply(1:(K-1), FUN = function(k) 1-pnorm(alpha.jk[[j]][k]))
-      prod2 = c(1, cumprod(second))
-      return(c(first*prod2, 1 - sum(first*prod2))) # 
-    }))
-  }
-  
   ##############
   ### Priors ###
   ##############
@@ -105,7 +85,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   if(is.null(priors$mu.alpha)) priors$mu.alpha <- 0 # fixed mean parameter prior on intercepts alpha.jk
   if(is.null(priors$m0)) priors$m0 <- 0 # fixed mean on m.alpha, prior mean for alpha.jj # higher so self-transition prob is higher
   if(is.null(priors$v0)) priors$v0 <- 1 # fixed variance on m.alpha, prior mean for alpha.jj
-  # modeling alpha
+  # hyperpriors on alpha
   if(is.null(priors$a1)) priors$a1 <- 1 # shape for sig2inv.alpha
   if(is.null(priors$a2)) priors$a2 <- 1 # shape for vinv.alpha
   if(is.null(priors$b1)) priors$b1 <- 1 # rate for sig2inv.alpha
@@ -242,7 +222,27 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
     alpha.jk[[k]][k] <- priors$m0
   }
   
-  # transition probability of going from state j to state k in the current trajectory
+  ################################
+  ### update transition matrix ###
+  ################################
+  
+  fun1 <- function(){
+    first1 = sapply(1:K, FUN = function(k) pnorm(alpha.0k[k]))
+    second1 = sapply(1:(K-1), FUN = function(k) 1-pnorm(alpha.0k[k]))
+    prod1 = c(1, cumprod(second1))
+    c(first1*prod1, 1 - sum(first1*prod1))
+  }
+  
+  fun2 <- function(){
+    t(sapply(1:(K), FUN = function(j){
+      first = sapply(1:K, FUN = function(k) pnorm(alpha.jk[[j]][k]))
+      second = sapply(1:(K-1), FUN = function(k) 1-pnorm(alpha.jk[[j]][k]))
+      prod2 = c(1, cumprod(second))
+      return(c(first*prod2, 1 - sum(first*prod2))) # 
+    }))
+  }
+  
+
   pi.z <- list()
   pi.z[[1]] <- fun1()
   pi.z[[2]] <- fun2()
@@ -287,19 +287,36 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   MH.lam <- 0 # for MH update "semi"
   
   # missing data sets
-  imputes <- ceiling(seq.int(nburn, niter, length.out = len.imp))
-  y.mar.save <- matrix(NA, len.imp, length(which(unlist(mismat)==1)))
-  y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
-  mar.mse <- rep(NA, len.imp)
-  lod.mse <- rep(NA, len.imp)
-  mar.sse <- rep(NA, len.imp)
-  lod.sse <- rep(NA, len.imp)
-  miss.mse <- rep(NA, len.imp)
-  mar.bias <- rep(NA, len.imp)
-  lod.bias <- rep(NA, len.imp)
-  mar.sum.bias <- rep(NA, len.imp)
-  lod.sum.bias <- rep(NA, len.imp)
-  s.imp <- 1
+  if(!is.null(len.imp)){
+    imputes <- ceiling(seq.int(nburn, niter, length.out = len.imp))
+    y.mar.save <- matrix(NA, len.imp, length(which(unlist(mismat)==1)))
+    y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
+    mar.mse <- rep(NA, len.imp)
+    lod.mse <- rep(NA, len.imp)
+    mar.sse <- rep(NA, len.imp)
+    lod.sse <- rep(NA, len.imp)
+    miss.mse <- rep(NA, len.imp)
+    mar.bias <- rep(NA, len.imp)
+    lod.bias <- rep(NA, len.imp)
+    mar.sum.bias <- rep(NA, len.imp)
+    lod.sum.bias <- rep(NA, len.imp)
+    s.imp <- 1
+  }else{
+    imputes = 0
+    y.mar.save <- NULL
+    y.lod.save <- NULL
+    mar.mse <- NULL
+    lod.mse <- NULL
+    mar.sse <- NULL
+    lod.sse <- NULL
+    miss.mse <- NULL
+    mar.bias <- NULL
+    lod.bias <- NULL
+    mar.sum.bias <- NULL
+    lod.sum.bias <- NULL
+    s.imp <- NULL
+  }
+  
   
   ###############
   ### Sampler ###
@@ -324,55 +341,25 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
         }
       }))
     }
+  
+    ###############################
+    ### update State List: Rcpp ###
+    ###############################
     
-    #############################################
-    ### update the possible states for each t ###
-    #############################################
-    
-    state.list <- list()
-    # state.list is a list of states that belong to some possible trajectory for each time point
-    for(i in 1:n){
-      # forward condition: first time point
-      for.list <- list()
-      for.list[[1]] <- which(pi.z[[1]] >= u[[i]][1])
-      for(t in 2:t.max){
-        for.list[[t]] <- sort(unique(unlist(lapply(intersect(for.list[[t-1]], 1:K),
-                                                   FUN = function(k) which(pi.z[[2]][k,] >= u[[i]][t])))))
-      }
-      # backward condition
-      back.list <- list()
-      back.list[[t.max]] <- for.list[[t.max]]
-      for(t in (t.max-1):1){
-        back.list[[t]] <- sort(unique(unlist(lapply(intersect(back.list[[t+1]], 1:K),
-                                                    FUN = function(k) which(pi.z[[2]][,k] >= u[[i]][t+1])))))
-      }
-      state.list[[i]] <- lapply(1:t.max, FUN = function(t) {
-        return(intersect(for.list[[t]], back.list[[t]]))
-      })
-    }
-    
-    ###########################
-    ### Determine t minus 1 ### 
-    ###########################
-    
-    detzAll <- mclapply(1:n, FUN = function(i){
-      detZminus1forNone(i = i, state.list.i = state.list[[i]], pi.z = pi.z, u.i = u[[i]], t.max = t.max)
-    })
+    state.list <- upStateListnox(piz = pi.z, u = u, K = K, tmax = t.max, n = n)
     
     ################
     ### Sample Z ### 
     ################
     
-    cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
-    K <- length(unique(unlist(z)))
+    z1 = upZnox(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff, 
+             nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max, K = K, n = n, d = p)
     
-    # only the joint NIW option 
-    z <- mclapply(1:n, FUN = function(i) {
-      updateZ(i=i, y.i=y[[i]], mu=mu, cholSigma=cholSigma, detR.stari=detR.star[[i]],
-              nu.df=nu.df, K=K, log.stuff=log.stuff, t.max=t.max, 
-              detz = detzAll[[i]], state.list.i = state.list[[i]])
+    z <- lapply(1:n, FUN = function(i){
+      z = as.numeric(z1[[i]])
     })
     
+
     #########################
     ### new state fillers ### 
     #########################
