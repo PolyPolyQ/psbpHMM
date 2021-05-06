@@ -49,6 +49,118 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// up_ajk_rm
+List up_ajk_rm(int K, int n, int tmax, List z, double vinv_alpha, double sig2inv_alpha, List w, List X, List beta_k, List beta_sk, double m_alpha, double mu_alpha);
+RcppExport SEXP _psbpHMM_up_ajk_rm(SEXP KSEXP, SEXP nSEXP, SEXP tmaxSEXP, SEXP zSEXP, SEXP vinv_alphaSEXP, SEXP sig2inv_alphaSEXP, SEXP wSEXP, SEXP XSEXP, SEXP beta_kSEXP, SEXP beta_skSEXP, SEXP m_alphaSEXP, SEXP mu_alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< List >::type z(zSEXP);
+    Rcpp::traits::input_parameter< double >::type vinv_alpha(vinv_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type sig2inv_alpha(sig2inv_alphaSEXP);
+    Rcpp::traits::input_parameter< List >::type w(wSEXP);
+    Rcpp::traits::input_parameter< List >::type X(XSEXP);
+    Rcpp::traits::input_parameter< List >::type beta_k(beta_kSEXP);
+    Rcpp::traits::input_parameter< List >::type beta_sk(beta_skSEXP);
+    Rcpp::traits::input_parameter< double >::type m_alpha(m_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type mu_alpha(mu_alphaSEXP);
+    rcpp_result_gen = Rcpp::wrap(up_ajk_rm(K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, X, beta_k, beta_sk, m_alpha, mu_alpha));
+    return rcpp_result_gen;
+END_RCPP
+}
+// up_ajk
+List up_ajk(int K, int n, int tmax, List z, double vinv_alpha, double sig2inv_alpha, List w, List X, List beta_k, double m_alpha, double mu_alpha);
+RcppExport SEXP _psbpHMM_up_ajk(SEXP KSEXP, SEXP nSEXP, SEXP tmaxSEXP, SEXP zSEXP, SEXP vinv_alphaSEXP, SEXP sig2inv_alphaSEXP, SEXP wSEXP, SEXP XSEXP, SEXP beta_kSEXP, SEXP m_alphaSEXP, SEXP mu_alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< List >::type z(zSEXP);
+    Rcpp::traits::input_parameter< double >::type vinv_alpha(vinv_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type sig2inv_alpha(sig2inv_alphaSEXP);
+    Rcpp::traits::input_parameter< List >::type w(wSEXP);
+    Rcpp::traits::input_parameter< List >::type X(XSEXP);
+    Rcpp::traits::input_parameter< List >::type beta_k(beta_kSEXP);
+    Rcpp::traits::input_parameter< double >::type m_alpha(m_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type mu_alpha(mu_alphaSEXP);
+    rcpp_result_gen = Rcpp::wrap(up_ajk(K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, X, beta_k, m_alpha, mu_alpha));
+    return rcpp_result_gen;
+END_RCPP
+}
+// up_ajk_nox
+List up_ajk_nox(int K, int n, int tmax, List z, double vinv_alpha, double sig2inv_alpha, List w, double m_alpha, double mu_alpha);
+RcppExport SEXP _psbpHMM_up_ajk_nox(SEXP KSEXP, SEXP nSEXP, SEXP tmaxSEXP, SEXP zSEXP, SEXP vinv_alphaSEXP, SEXP sig2inv_alphaSEXP, SEXP wSEXP, SEXP m_alphaSEXP, SEXP mu_alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< List >::type z(zSEXP);
+    Rcpp::traits::input_parameter< double >::type vinv_alpha(vinv_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type sig2inv_alpha(sig2inv_alphaSEXP);
+    Rcpp::traits::input_parameter< List >::type w(wSEXP);
+    Rcpp::traits::input_parameter< double >::type m_alpha(m_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type mu_alpha(mu_alphaSEXP);
+    rcpp_result_gen = Rcpp::wrap(up_ajk_nox(K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, m_alpha, mu_alpha));
+    return rcpp_result_gen;
+END_RCPP
+}
+// upW_rm
+List upW_rm(arma::vec alpha0, List X, List beta, List beta_rm, arma::mat ajk, List z, int tmax, int n);
+RcppExport SEXP _psbpHMM_upW_rm(SEXP alpha0SEXP, SEXP XSEXP, SEXP betaSEXP, SEXP beta_rmSEXP, SEXP ajkSEXP, SEXP zSEXP, SEXP tmaxSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type alpha0(alpha0SEXP);
+    Rcpp::traits::input_parameter< List >::type X(XSEXP);
+    Rcpp::traits::input_parameter< List >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< List >::type beta_rm(beta_rmSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type ajk(ajkSEXP);
+    Rcpp::traits::input_parameter< List >::type z(zSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(upW_rm(alpha0, X, beta, beta_rm, ajk, z, tmax, n));
+    return rcpp_result_gen;
+END_RCPP
+}
+// upW
+List upW(arma::vec alpha0, List X, List beta, arma::mat ajk, List z, int tmax, int n);
+RcppExport SEXP _psbpHMM_upW(SEXP alpha0SEXP, SEXP XSEXP, SEXP betaSEXP, SEXP ajkSEXP, SEXP zSEXP, SEXP tmaxSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type alpha0(alpha0SEXP);
+    Rcpp::traits::input_parameter< List >::type X(XSEXP);
+    Rcpp::traits::input_parameter< List >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type ajk(ajkSEXP);
+    Rcpp::traits::input_parameter< List >::type z(zSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(upW(alpha0, X, beta, ajk, z, tmax, n));
+    return rcpp_result_gen;
+END_RCPP
+}
+// upW_nox
+List upW_nox(arma::vec alpha0, arma::mat ajk, List z, int tmax, int n);
+RcppExport SEXP _psbpHMM_upW_nox(SEXP alpha0SEXP, SEXP ajkSEXP, SEXP zSEXP, SEXP tmaxSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type alpha0(alpha0SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type ajk(ajkSEXP);
+    Rcpp::traits::input_parameter< List >::type z(zSEXP);
+    Rcpp::traits::input_parameter< int >::type tmax(tmaxSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(upW_nox(alpha0, ajk, z, tmax, n));
+    return rcpp_result_gen;
+END_RCPP
+}
 // invMat
 arma::mat invMat(arma::mat x);
 RcppExport SEXP _psbpHMM_invMat(SEXP xSEXP) {
@@ -103,16 +215,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// returnPi
-double returnPi();
-RcppExport SEXP _psbpHMM_returnPi() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(returnPi());
-    return rcpp_result_gen;
-END_RCPP
-}
 // mvndensity
 double mvndensity(arma::vec y, arma::vec mu, arma::mat Sigma, double d);
 RcppExport SEXP _psbpHMM_mvndensity(SEXP ySEXP, SEXP muSEXP, SEXP SigmaSEXP, SEXP dSEXP) {
@@ -124,6 +226,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
     Rcpp::traits::input_parameter< double >::type d(dSEXP);
     rcpp_result_gen = Rcpp::wrap(mvndensity(y, mu, Sigma, d));
+    return rcpp_result_gen;
+END_RCPP
+}
+// logmvndensity
+double logmvndensity(arma::vec y, arma::vec mu, arma::mat Sigma, double d);
+RcppExport SEXP _psbpHMM_logmvndensity(SEXP ySEXP, SEXP muSEXP, SEXP SigmaSEXP, SEXP dSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< double >::type d(dSEXP);
+    rcpp_result_gen = Rcpp::wrap(logmvndensity(y, mu, Sigma, d));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -173,6 +289,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// getWhich_greater
+NumericVector getWhich_greater(NumericVector a, double num, int K);
+RcppExport SEXP _psbpHMM_getWhich_greater(SEXP aSEXP, SEXP numSEXP, SEXP KSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< double >::type num(numSEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    rcpp_result_gen = Rcpp::wrap(getWhich_greater(a, num, K));
+    return rcpp_result_gen;
+END_RCPP
+}
 // upStateList
 List upStateList(List piz, List u, int K, int tmax, int n);
 RcppExport SEXP _psbpHMM_upStateList(SEXP pizSEXP, SEXP uSEXP, SEXP KSEXP, SEXP tmaxSEXP, SEXP nSEXP) {
@@ -203,43 +332,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// createMat
-NumericMatrix createMat(int n, int niter, NumericMatrix Zmat);
-RcppExport SEXP _psbpHMM_createMat(SEXP nSEXP, SEXP niterSEXP, SEXP ZmatSEXP) {
+// getWhich_equal
+NumericVector getWhich_equal(NumericVector a, int k);
+RcppExport SEXP _psbpHMM_getWhich_equal(SEXP aSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Zmat(ZmatSEXP);
-    rcpp_result_gen = Rcpp::wrap(createMat(n, niter, Zmat));
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    rcpp_result_gen = Rcpp::wrap(getWhich_equal(a, k));
     return rcpp_result_gen;
 END_RCPP
 }
-// minDist
-int minDist(int niter, int K, int n, NumericMatrix Z, NumericMatrix Prob);
-RcppExport SEXP _psbpHMM_minDist(SEXP niterSEXP, SEXP KSEXP, SEXP nSEXP, SEXP ZSEXP, SEXP ProbSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    Rcpp::traits::input_parameter< int >::type K(KSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Z(ZSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Prob(ProbSEXP);
-    rcpp_result_gen = Rcpp::wrap(minDist(niter, K, n, Z, Prob));
-    return rcpp_result_gen;
-END_RCPP
-}
-// vectorMean
-double vectorMean(NumericVector a, NumericVector b);
-RcppExport SEXP _psbpHMM_vectorMean(SEXP aSEXP, SEXP bSEXP) {
+// vectorSame
+double vectorSame(NumericVector a, NumericVector b);
+RcppExport SEXP _psbpHMM_vectorSame(SEXP aSEXP, SEXP bSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type b(bSEXP);
-    rcpp_result_gen = Rcpp::wrap(vectorMean(a, b));
+    rcpp_result_gen = Rcpp::wrap(vectorSame(a, b));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -249,19 +362,25 @@ static const R_CallMethodDef CallEntries[] = {
     {"_psbpHMM_rcpparma_outerproduct", (DL_FUNC) &_psbpHMM_rcpparma_outerproduct, 1},
     {"_psbpHMM_rcpparma_innerproduct", (DL_FUNC) &_psbpHMM_rcpparma_innerproduct, 1},
     {"_psbpHMM_rcpparma_bothproducts", (DL_FUNC) &_psbpHMM_rcpparma_bothproducts, 1},
+    {"_psbpHMM_up_ajk_rm", (DL_FUNC) &_psbpHMM_up_ajk_rm, 12},
+    {"_psbpHMM_up_ajk", (DL_FUNC) &_psbpHMM_up_ajk, 11},
+    {"_psbpHMM_up_ajk_nox", (DL_FUNC) &_psbpHMM_up_ajk_nox, 9},
+    {"_psbpHMM_upW_rm", (DL_FUNC) &_psbpHMM_upW_rm, 8},
+    {"_psbpHMM_upW", (DL_FUNC) &_psbpHMM_upW, 7},
+    {"_psbpHMM_upW_nox", (DL_FUNC) &_psbpHMM_upW_nox, 5},
     {"_psbpHMM_invMat", (DL_FUNC) &_psbpHMM_invMat, 1},
     {"_psbpHMM_mhDecomp", (DL_FUNC) &_psbpHMM_mhDecomp, 2},
     {"_psbpHMM_updatePi", (DL_FUNC) &_psbpHMM_updatePi, 5},
     {"_psbpHMM_updatePi_rm", (DL_FUNC) &_psbpHMM_updatePi_rm, 6},
-    {"_psbpHMM_returnPi", (DL_FUNC) &_psbpHMM_returnPi, 0},
     {"_psbpHMM_mvndensity", (DL_FUNC) &_psbpHMM_mvndensity, 4},
+    {"_psbpHMM_logmvndensity", (DL_FUNC) &_psbpHMM_logmvndensity, 4},
     {"_psbpHMM_upZ", (DL_FUNC) &_psbpHMM_upZ, 13},
     {"_psbpHMM_upZnox", (DL_FUNC) &_psbpHMM_upZnox, 13},
+    {"_psbpHMM_getWhich_greater", (DL_FUNC) &_psbpHMM_getWhich_greater, 3},
     {"_psbpHMM_upStateList", (DL_FUNC) &_psbpHMM_upStateList, 5},
     {"_psbpHMM_upStateListnox", (DL_FUNC) &_psbpHMM_upStateListnox, 5},
-    {"_psbpHMM_createMat", (DL_FUNC) &_psbpHMM_createMat, 3},
-    {"_psbpHMM_minDist", (DL_FUNC) &_psbpHMM_minDist, 5},
-    {"_psbpHMM_vectorMean", (DL_FUNC) &_psbpHMM_vectorMean, 2},
+    {"_psbpHMM_getWhich_equal", (DL_FUNC) &_psbpHMM_getWhich_equal, 2},
+    {"_psbpHMM_vectorSame", (DL_FUNC) &_psbpHMM_vectorSame, 2},
     {NULL, NULL, 0}
 };
 

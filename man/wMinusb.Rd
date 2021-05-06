@@ -2,7 +2,7 @@
 % Please edit documentation in R/wMinusb.R
 \name{wMinusb}
 \alias{wMinusb}
-\title{Calcuate W minus Xbeta}
+\title{Calculate W minus Xbeta}
 \usage{
 wMinusb(i, t, k, w.z, beta.k, beta.sk = NULL, X)
 }
@@ -25,5 +25,5 @@ wMinusb(i, t, k, w.z, beta.k, beta.sk = NULL, X)
 w minus X%*%beta
 }
 \description{
-Calcuate W minus Xbeta
+Calculate W minus Xbeta
 }

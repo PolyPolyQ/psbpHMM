@@ -9,4 +9,5 @@
 ismissing <- function(x) {
   if(is.na(x)) return(1) # MAR
   else if(x==-Inf) return(2) # lod
-  else return(0) } # observed
+  else return(0) 
+  } # observed

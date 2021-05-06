@@ -171,7 +171,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   
   for(i in 1:n){
     if(any(mismat[[i]]==2)){ # lod 
-      expLod <- exp(lod)
+      expLod <- exp(lod[[i]])
       numlod <- apply(mismat[[i]], 1, FUN = function(x) length(which(x==2))) # how many LOD
       for(t in which(numlod>0)){ # loop thru LOD data
         whichlod <- which(mismat[[i]][t,]==2) # which exposures are below LOD 
@@ -232,12 +232,8 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       which.lams <- unlist(sapply(2:p, FUN = function(j) rep(j,j-1))) # which lams to use for each al 
       L[[k]] <- diag(p)
       lowerTriangle(L[[k]]) <- al[[k]]
-      
-      # make a C++ function for solve 
-      #Sigma[[k]] <- solve(L[[k]])%*%D[[k]]%*%t(solve(L[[k]])) 
       Sigma[[k]] <- mhDecomp(L[[k]], D[[k]]) # cppFunction
       mu[[k]] <- rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
-      #mu[[k]] <- mvnfast::rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
     }else{
       Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = invMat(R.mat)),p,p)))
       mu[[k]] <- rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
@@ -322,28 +318,29 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   
   z.save <- list()
   mu.save <- list()
-  Sigma.save <- list()
-  K.save <- rep(NA, niter)
-  ham <- rep(NA, niter)
-  mu.mse <- rep(NA, niter)
-  mu.sse <- rep(NA, niter)
+  beta.save <- list()
+  K.save <- numeric()
+  ham <- numeric()
+  mu.mse <- numeric()
+  mu.sse <- numeric()
   MH.a <- 0 # for MH update a
   MH.lam <- 0 # for MH update lams
+  s.save = 1
   
   # missing data sets
   if(!is.null(len.imp)){
     imputes <- ceiling(seq.int(nburn, niter, length.out = len.imp))
     y.mar.save <- matrix(NA, len.imp, length(which(unlist(mismat)==1)))
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
-    mar.mse <- rep(NA, len.imp)
-    lod.mse <- rep(NA, len.imp)
-    mar.sse <- rep(NA, len.imp)
-    lod.sse <- rep(NA, len.imp)
-    miss.mse <- rep(NA, len.imp)
-    mar.bias <- rep(NA, len.imp)
-    lod.bias <- rep(NA, len.imp)
-    mar.sum.bias <- rep(NA, len.imp)
-    lod.sum.bias <- rep(NA, len.imp)
+    mar.mse <- numeric()
+    lod.mse <- numeric()
+    mar.sse <- numeric()
+    lod.sse <- numeric()
+    miss.mse <- numeric()
+    mar.bias <- numeric()
+    lod.bias <- numeric()
+    mar.sum.bias <- numeric()
+    lod.sum.bias <- numeric()
     s.imp <- 1
   }else{
     imputes = 0
@@ -362,7 +359,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   }
 
   
-  beta.save <- list()
+
   
   ###############
   ### Sampler ###
@@ -371,24 +368,172 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   for(s in 1:niter){
     
     
-    # par(mfrow = c(2,2))
+    # par(mfrow = c(1,2))
     # plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    # abline(h = lod[1])
+    # abline(h = lod[[1]][1])
     # plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z.true[[1]])
-    # abline(h = lod[1])
+    # abline(h = lod[[1]][1])
     # plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    # abline(h = lod[1])
+    # abline(h = lod[[2]][1])
     # plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z.true[[2]])
-    # abline(h = lod[1])
+    # abline(h = lod[[2]][1])
     
     #####################
     ### initial stuff ### ### done 
     #####################
     
-    print(paste("iteration", s))
+    if (s%%100==0) print(paste("iteration", s, " number of states =", K))
     #start.time1 <- Sys.time()
     z.prev <- list()
     z.prev <- mclapply(1:n, FUN=function(i) return(z[[i]]))
+    
+    ######################
+    ### update theta_k ### 
+    ######################
+    
+    
+    cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
+    # first update mu and Sigma 
+    for(k in 1:K){
+      itimes <- lapply(1:n, FUN = function(i)  which(z[[i]] == k))
+      nkk.tilde  <- length(unlist(itimes)) # number in state k 
+      y.list <- lapply(1:n, FUN = function(i) matrix(y[[i]][itimes[[i]],], ncol = p))
+      yk <- numeric()
+      for(i in 1:n){
+        yk <- rbind(yk, y.list[[i]])
+      }
+      ybark <- matrix(apply(yk, 2, mean),p,1)
+      nu_nk <- nu.df + nkk.tilde 
+      
+      if(algorithm == "Gibbs"){
+        
+        mu_nk <- (priors$lambda*priors$mu0 + nkk.tilde*ybark)/(priors$lambda+nkk.tilde) 
+        lambda_nk <- priors$lambda + nkk.tilde 
+        if(nkk.tilde == 1){
+          M <- R.mat
+        }else{
+          M <- R.mat + (nkk.tilde-1)*cov(yk) 
+        }
+        Sigma_nk <- M + (priors$lambda*nkk.tilde)/(nkk.tilde + priors$lambda)*tcrossprod(ybark - priors$mu0) 
+        Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1,df=nu_nk, Sigma=invMat(Sigma_nk)),p,p)))
+        mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
+        
+      }else if(algorithm == "MH"){
+        # update a
+        for(j in 1:length(al[[k]])){
+          
+          if(resK){
+            eta <- rgeom(1, (1/eta.star)) + 1
+          }else eta <- 1
+          
+          if(eta>0){
+            for(m in 1:eta){
+              al.star <- al[[k]]
+              L.star <- L[[k]]
+              a.star <- rnorm(1, 0, sqrt(tau2)); a.star # proposed value 
+              al.star[j] <- a.star; al.star
+              lowerTriangle(L.star) <- al.star; L.star
+              SigmaStar <- mhDecomp(L.star, D[[k]]) # cppFunction
+
+              # likelihoods
+              da.curr <- sum(dmvn(yk, mu = mu[[k]], sigma = cholSigma[[k]], log = TRUE, isChol = TRUE)) +
+                dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*Sigma[[k]]), log = TRUE, isChol = TRUE)
+              da.star <- sum(dmvn(yk, mu = mu[[k]], sigma = chol(SigmaStar), log = TRUE, isChol = TRUE)) +
+                dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*SigmaStar), log = TRUE, isChol = TRUE)
+              
+              # priors 
+              pa.curr <- dnorm(al[[k]][j], 0, sqrt(lams[[k]][which.lams[j]]), log = TRUE)
+              pa.star <- dnorm(a.star, 0, sqrt(lams[[k]][which.lams[j]]), log = TRUE)
+              
+              # proposals
+              qa.curr <- dnorm(al[[k]][j], 0, sqrt(tau2), log = TRUE)
+              qa.star <- dnorm(a.star, 0, sqrt(tau2), log = TRUE)
+              
+              mh1 <- pa.star + da.star + qa.curr; mh1
+              mh2 <- pa.curr + da.curr + qa.star
+              # catch error on da.curr
+              
+              ar <- mh1-mh2
+              
+              if(runif(1) < exp(ar)){
+                al[[k]][j] <- a.star
+                L[[k]] <- L.star # update this too, fxn of a.star
+                Sigma[[k]] <- SigmaStar # update this too, fxn of a.star
+                MH.a <- MH.a + 1 
+              }
+            }
+          }
+        }
+        # update lams
+        for(j in 1:p){
+          D.star <- D[[k]]
+          lam.star <- 1/rgamma(1, a.tune, rate = b.tune); lam.star # proposed value 
+          D.star[j,j] <- lam.star
+          
+          SigmaStar <- mhDecomp(L[[k]], D.star) # cppFunction
+          
+          # likelihoods
+          dlam.curr <- sum(dmvn(yk, mu = mu[[k]], sigma = cholSigma[[k]], log = TRUE, isChol = TRUE)) + 
+            dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*Sigma[[k]]), log = TRUE, isChol = TRUE)
+          dlam.star <- sum(dmvn(yk, mu = mu[[k]], sigma = chol(SigmaStar), log = TRUE, isChol = TRUE)) +
+            dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*SigmaStar), log = TRUE, isChol = TRUE)
+          
+          # priors
+          plam.curr <- dinvgamma(lams[[k]][j], vj0[j]/2, rate = deltaj0[j]/2, log = TRUE)
+          plam.star <- dinvgamma(lam.star, vj0[j]/2, rate = deltaj0[j]/2, log = TRUE)
+          
+          # proposal 
+          qlam.curr <- dinvgamma(lams[[k]][j], a.tune, b.tune, log = TRUE)
+          qlam.star <- dinvgamma(lam.star, a.tune, b.tune, log = TRUE)
+          
+          mh1 <- plam.star + dlam.star + qlam.curr; mh1
+          mh2 <- plam.curr + dlam.curr + qlam.star; mh2
+          ar <- mh1-mh2
+          
+          if(runif(1) < exp(ar)){
+            lams[[k]][j] <- lam.star
+            D[[k]] <- D.star # fxn of lam.star
+            Sigma[[k]] <- SigmaStar # update this too, fxn of lam.star
+            MH.lam <- MH.lam + 1 
+          }
+        }
+        
+        # update mu by Gibbs
+        mu_nk <- (priors$lambda*priors$mu0 + nkk.tilde*ybark)/(priors$lambda+nkk.tilde) 
+        lambda_nk <- priors$lambda + nkk.tilde 
+        mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
+      } # end if MH 
+    } # end sample theta  
+    
+    
+    ###################################################################################
+    ### if SigmaPrior == "non-informative": Update aj.inv, detR.star and log.stuff  ###
+    ###################################################################################
+    
+    if(SigmaPrior == "non-informative"){
+      # then update aj.inv for j = 1 to p 
+      shape.aj <- (K*(priors$nu+p-1)+1)/2
+      sigmajj <- lapply(1:K, FUN = function(k){
+        diag(invMat(Sigma[[k]])) # cppFunction
+      }) # diagonal elements of each Sigma.Inv_k
+      diags <- numeric()
+      for(k in 1:K){
+        diags <- rbind(diags, sigmajj[[k]])
+      }
+      sumdiags <- apply(diags, 2, sum) # sum of diagonals of Sigma.Inv for k = 1 to K 
+      rate.aj <- 1/(priors$bj^2) + priors$nu*sumdiags
+      aj.inv <- rgamma(p, shape = shape.aj, rate = rate.aj) # these are 1/aj 
+      R.mat <- 2*priors$nu*diag(aj.inv)
+      
+      detR.star <- mclapply(1:n, FUN = function(i){
+        sapply(1:t.max, FUN = function(t){
+          x <- R.mat + priors$lambda*tcrossprod(priors$mu0) + tcrossprod(y[[i]][t,]) - 
+            (1/(1+priors$lambda))*tcrossprod(priors$lambda*priors$mu0+y[[i]][t,])
+          return(det(x))
+        })})
+      
+      log.stuff <- (p/2)*log(priors$lambda/(pi*(priors$lambda+1)))+log(gampp)+(nu.df/2)*log(det(R.mat))
+    }
     
     
     ################
@@ -406,25 +551,29 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       }))
     }
     
+    ############################
+    ### update State List: R ###
+    ############################
     
-    ###############################
-    ### update State List: Rcpp ###
-    ###############################
-  
-    state.list <- upStateList(piz = pi.z, u = u, K = K, tmax = t.max, n = n)
+    state.list = lapply(1:n, FUN = function(i){
+      return(upStateList_lapply(i, u=u, pi.z = pi.z, K=K, t.max = t.max))
+    })
     
     ######################
     ### Sample Z: Rcpp ### 
     ######################
     
-    z1 = upZ(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff, 
-             nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max, K = K, n = n, d = p)
-    
-    z <- lapply(1:n, FUN = function(i){
-      z = as.numeric(z1[[i]])
-    })
+    # why is this so slow in Rcpp?
+    ## new code with updated handling of NAs in probVec
+    z1 <- upZ(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff,
+              nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max,
+              K = K, n = n, d = p)
   
     
+    z <- lapply(1:n, FUN = function(i){
+      return(as.numeric(z1[[i]]))
+    })
+
     #########################
     ### new state fillers ### 
     #########################
@@ -545,188 +694,22 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       D <- D.new
       L <- L.new
     }
-    
-    cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
-    
-    ######################
-    ### update theta_k ### ### Rcpp 
-    ######################
-    
-    # first update mu and Sigma 
-    for(k in 1:K){
-      itimes <- lapply(1:n, FUN = function(i)  which(z[[i]] == k))
-      nkk.tilde  <- length(unlist(itimes)) # number in state k 
-      y.list <- lapply(1:n, FUN = function(i) matrix(y[[i]][itimes[[i]],], ncol = p))
-      yk <- numeric()
-      for(i in 1:n){
-        yk <- rbind(yk, y.list[[i]])
-      }
-      ybark <- matrix(apply(yk, 2, mean),p,1)
-      nu_nk <- nu.df + nkk.tilde 
-      
-      if(algorithm == "Gibbs"){
-        
-        mu_nk <- (priors$lambda*priors$mu0 + nkk.tilde*ybark)/(priors$lambda+nkk.tilde) 
-        lambda_nk <- priors$lambda + nkk.tilde 
-        if(nkk.tilde == 1){
-          M <- R.mat
-        }else{
-          M <- R.mat + (nkk.tilde-1)*cov(yk) 
-        }
-        Sigma_nk <- M + (priors$lambda*nkk.tilde)/(nkk.tilde + priors$lambda)*tcrossprod(ybark - priors$mu0) 
-        Sigma[[k]] <- chol2inv(chol(matrix(rWishart(1,df=nu_nk, Sigma=invMat(Sigma_nk)),p,p)))
-        mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
-        
-      }else if(algorithm == "MH"){
-        # update a
-        for(j in 1:length(al[[k]])){
-          
-          if(resK){
-            eta <- rgeom(1, (1/eta.star)) + 1
-          }else eta <- 1
-          
-          if(eta>0){
-            for(m in 1:eta){
-              al.star <- al[[k]]
-              L.star <- L[[k]]
-              
-              #a.star <- rnorm(1, al[[k]][j], sqrt(tau2)); a.star # proposed value 
-              a.star <- rnorm(1, 0, sqrt(tau2)); a.star # proposed value 
-              
-              al.star[j] <- a.star; al.star
-              lowerTriangle(L.star) <- al.star; L.star
-              
-              SigmaStar <- mhDecomp(L.star, D[[k]]) # cppFunction
-              
-              #SigmaStar <- solve(L.star)%*%D[[k]]%*%t(solve(L.star)); SigmaStar # function of a.star
-              
-              # likelihoods
-              da.curr <- sum(dmvn(yk, mu = mu[[k]], sigma = cholSigma[[k]], log = TRUE, isChol = TRUE)) +
-                dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*Sigma[[k]]), log = TRUE, isChol = TRUE)
-              da.star <- sum(dmvn(yk, mu = mu[[k]], sigma = chol(SigmaStar), log = TRUE, isChol = TRUE)) +
-                dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*SigmaStar), log = TRUE, isChol = TRUE)
-              
-              # priors 
-              pa.curr <- dnorm(al[[k]][j], 0, sqrt(lams[[k]][which.lams[j]]), log = TRUE)
-              pa.star <- dnorm(a.star, 0, sqrt(lams[[k]][which.lams[j]]), log = TRUE)
-              
-              # proposals
-              qa.curr <- dnorm(al[[k]][j], 0, sqrt(tau2), log = TRUE)
-              qa.star <- dnorm(a.star, 0, sqrt(tau2), log = TRUE)
-              
-              mh1 <- pa.star + da.star + qa.curr; mh1
-              mh2 <- pa.curr + da.curr + qa.star
-              # catch error on da.curr
-              
-              ar <- mh1-mh2
-              
-              if(runif(1) < exp(ar)){
-                al[[k]][j] <- a.star
-                L[[k]] <- L.star # update this too, fxn of a.star
-                Sigma[[k]] <- SigmaStar # update this too, fxn of a.star
-                MH.a <- MH.a + 1 
-              }
-            }
-          }
-        }
-        # update lams
-        for(j in 1:p){
-          D.star <- D[[k]]
-          lam.star <- 1/rgamma(1, a.tune, rate = b.tune); lam.star # proposed value 
-          D.star[j,j] <- lam.star
-          
-          SigmaStar <- mhDecomp(L[[k]], D.star) # cppFunction
-          
-          #SigmaStar <- solve(L[[k]])%*%D.star%*%t(solve(L[[k]]))
-          
-          # likelihoods
-          dlam.curr <- sum(dmvn(yk, mu = mu[[k]], sigma = cholSigma[[k]], log = TRUE, isChol = TRUE)) + 
-            dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*Sigma[[k]]), log = TRUE, isChol = TRUE)
-          dlam.star <- sum(dmvn(yk, mu = mu[[k]], sigma = chol(SigmaStar), log = TRUE, isChol = TRUE)) +
-            dmvn(mu[[k]], mu = priors$mu0, sigma = chol((1/priors$lambda)*SigmaStar), log = TRUE, isChol = TRUE)
-          
-          # priors
-          plam.curr <- dinvgamma(lams[[k]][j], vj0[j]/2, rate = deltaj0[j]/2, log = TRUE)
-          plam.star <- dinvgamma(lam.star, vj0[j]/2, rate = deltaj0[j]/2, log = TRUE)
-          
-          # proposal 
-          qlam.curr <- dinvgamma(lams[[k]][j], a.tune, b.tune, log = TRUE)
-          qlam.star <- dinvgamma(lam.star, a.tune, b.tune, log = TRUE)
-          
-          mh1 <- plam.star + dlam.star + qlam.curr; mh1
-          mh2 <- plam.curr + dlam.curr + qlam.star; mh2
-          ar <- mh1-mh2
-          
-          if(runif(1) < exp(ar)){
-            lams[[k]][j] <- lam.star
-            D[[k]] <- D.star # fxn of lam.star
-            Sigma[[k]] <- SigmaStar # update this too, fxn of lam.star
-            MH.lam <- MH.lam + 1 
-          }
-        }
-        
-        # update mu by Gibbs
-        mu_nk <- (priors$lambda*priors$mu0 + nkk.tilde*ybark)/(priors$lambda+nkk.tilde) 
-        lambda_nk <- priors$lambda + nkk.tilde 
-        mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
-      } # end if MH 
-    } # end sample theta  
-    
-    
-    ######################################################################
-    ### if SigmaPrior == "NI": Update aj.inv, detR.star and log.stuff  ###
-    ######################################################################
-    
-    if(SigmaPrior == "non-informative"){
-      # then update aj.inv for j = 1 to p 
-      shape.aj <- (K*(priors$nu+p-1)+1)/2
-      sigmajj <- lapply(1:K, FUN = function(k){
-        diag(invMat(Sigma[[k]])) # cppFunction
-      }) # diagonal elements of each Sigma.Inv_k
-      diags <- numeric()
-      for(k in 1:K){
-        diags <- rbind(diags, sigmajj[[k]])
-      }
-      sumdiags <- apply(diags, 2, sum) # sum of diagonals of Sigma.Inv for k = 1 to K 
-      rate.aj <- 1/(priors$bj^2) + priors$nu*sumdiags
-      aj.inv <- rgamma(p, shape = shape.aj, rate = rate.aj) # these are 1/aj 
-      R.mat <- 2*priors$nu*diag(aj.inv)
-      
-      detR.star <- mclapply(1:n, FUN = function(i){
-        sapply(1:t.max, FUN = function(t){
-          x <- R.mat + priors$lambda*tcrossprod(priors$mu0) + tcrossprod(y[[i]][t,]) - 
-            (1/(1+priors$lambda))*tcrossprod(priors$lambda*priors$mu0+y[[i]][t,])
-          return(det(x))
-        })})
-      
-      log.stuff <- (p/2)*log(priors$lambda/(pi*(priors$lambda+1)))+log(gampp)+(nu.df/2)*log(det(R.mat))
-    }
-    
+
     ################
-    ### update W ### ### Rcpp  
+    ### update W ###
     ################
     
     # for each t, w.z gives me a VECTOR based on the previous time point and values up to the current time point
     # so each w.z[[t]] should be a VECTOR of length z_t
-    
-    ### this is slow: C++
-    set.seed(1234)
-    w.z <- list()
-    for(i in 1:n){
-      w.z[[i]] <- list()
-      for(t in 1:t.max){
-        w.z[[i]][[t]] <- sapply(1:z[[i]][t], FUN = function(l) updateW(t=t, l=l, i=i, alpha.0k=alpha.0k, X=X[[i]], 
-                                                                       beta.k=beta.k, beta.sk = beta.sk[[i]], 
-                                                                       alpha.jk=alpha.jk, z=z))
-      }
+    ajkmat = matrix(unlist(alpha.jk), nrow = K, ncol = K)
+    if(!is.null(rmlist)){
+      w.z = upW_rm(alpha0 = alpha.0k, X = X, beta = beta.k, beta_rm = beta.sk, ajk = ajkmat, z=z, tmax = t.max, n=n)
+    }else{
+      w.z = upW(alpha0 = alpha.0k, X = X, beta = beta.k, ajk = ajkmat, z=z, tmax = t.max, n=n)
     }
 
-
-    
-  
-    
     #######################
-    ### update alpha.0k ### ### done 
+    ### update alpha.0k ### 
     #######################
     
     # number of i's s.t z_i1 >= k for each k 
@@ -761,19 +744,15 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     ### update alpha.jk ### 
     #######################
     
-    ### this is slow: C++
-    alpha.jk <- lapply(1:(K), FUN = function(j){
-      unlist(lapply(1:(K), FUN = function(k){
-        updateAlphaJK(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
-                          sig2inv.alpha = sig2inv.alpha, w.z = w.z, X = X, beta.k = beta.k,
-                          beta.sk = beta.sk, m.alpha = m.alpha, mu.alpha = priors$mu.alpha)
-      }))
-    })
-  
     
-    if(anyNA(unlist(alpha.jk))) {
-      stop("NA's in alpha.jk")
+    if(is.null(rmlist)){
+      alpha.jk = up_ajk(K=K,n=n, tmax = t.max, z = z, vinv_alpha = vinv.alpha, sig2inv_alpha = sig2inv.alpha,
+                        w = w.z, X = X, beta_k = beta.k, m_alpha = m.alpha, mu_alpha = priors$mu.alpha)
+    }else{
+      alpha.jk = up_ajk_rm(K=K,n=n, tmax = t.max, z = z, vinv_alpha = vinv.alpha, sig2inv_alpha = sig2inv.alpha,
+                        w = w.z, X = X, beta_k = beta.k, beta_sk = beta.sk, m_alpha = m.alpha, mu_alpha = priors$mu.alpha)
     }
+    
     
     ######################
     ### update m.alpha ###
@@ -840,10 +819,6 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
         }
         alpha.k <- unlist(alpha.k)
         
-        if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde){
-          stop("dimension of alpha, w, or X is wrong")
-        }
-        
         if(!is.null(rmlist)){
           Xibetak = numeric()
           for(i in 1:n){
@@ -864,14 +839,12 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       }
     })
     
-    if(anyNA(unlist(beta.k))) {
-      stop("NA's in beta.k")
-    }
-    
     ############################################
     ### update beta.sk for repeated measures ###
     ############################################
   
+    ## this is a little slow 
+    
     if(!is.null(rmlist)){
       beta.ik = list()
       for(i.sub in 1:n.sub){
@@ -907,9 +880,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
               alpha.k[[i]] <- alphaTHIS
             }
             alpha.k <- unlist(alpha.k)
-            if(length(alpha.k) != nk.tilde | length(w.k) != nk.tilde | nrow(X.k) != nk.tilde){
-              stop("dimension of alpha, w, or X is wrong")
-            }
+
             # update beta.k
             V.k <- chol2inv(chol(priors$SigInv.betaS + crossprod(X.k, X.k)))
             m.k <- crossprod(V.k,crossprod(priors$SigInv.betaS,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
@@ -920,10 +891,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
           }
         })
       }
-      if(anyNA(unlist(beta.ik))) {
-        stop("NA's in beta.k")
-      }
-      
+
       # relist from 1:n
       beta.sk = list()
       for(i in 1:n){
@@ -949,12 +917,13 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     
     ajkmat = matrix(unlist(alpha.jk), nrow = K, ncol = K)
     
+    # why is this so slow in Rcpp?
     if(!is.null(rmlist)){
       pi.z = updatePi_rm(beta = beta.k, beta_sk = beta.sk, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
     }else{
       pi.z = updatePi(beta = beta.k, X = X, a0 = alpha.0k, ajk = ajkmat, tmax = t.max)
     }
-    
+
     #################################
     ### Sample New Missing Values ###
     #################################
@@ -992,7 +961,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
           whichlod <- which(mismat[[i]][t,]==2) # which ones are below lod  
           if(length(whichlod)==p){ 
             y[[i]][t,] <- rtmvn(1, Mean = as.vector(mu[[z[[i]][t]]]), Sigma = Sigma[[z[[i]][t]]], lower = rep(-Inf, p),
-                                upper = lod, int = y[[i]][t,], burn = 10, thin = 1)
+                                upper = lod[[i]], int = y[[i]][t,], burn = 10, thin = 1)
           }else{
             y.obs <- y[[i]][t,-whichlod]
             mu.obs <- mu[[z[[i]][t]]][,-whichlod]
@@ -1005,7 +974,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
             mu.mgo <- as.numeric(mu.miss + Sigma.mis.obs.inv%*%(y.obs - mu.obs))
             Sigma.mgo <- Sigma.miss + Sigma.mis.obs.inv%*%Sigma.obs.miss
             y[[i]][t,whichlod] <- rtmvn(1, Mean = mu.mgo, Sigma = Sigma.mgo, lower = rep(-Inf, length(whichlod)),
-                                        upper = lod[whichlod], int = y[[i]][t, whichlod], burn = 10, thin = 1)
+                                        upper = lod[[i]][whichlod], int = y[[i]][t, whichlod], burn = 10, thin = 1)
             
           }
         }
@@ -1013,83 +982,73 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     }
     
     #####################
-    ### Error Measure ###
-    #####################
-    
-    ## Hamming distance ##
-    if(!is.null(unlist(z.true))){
-      ham.error <- hamdist(unlist(z.true), unlist(z)) 
-      ham[s] <- ham.error/(n*t.max) # proportion of misplaced states
-    }else{
-      ham <- NULL
-    }    
-    
-    
-    ## MSE for mu ##
-    if(!is.null(mu.true)){
-      sse <- list()
-      for(i in 1:n){
-        sse[[i]] <- sapply(1:t.max, FUN = function(t){
-          as.numeric(crossprod(unlist(mu[z[[i]][t]]) - mu.true[z.true[[i]][t],]))/p
-        })
-      }
-      mu.sse[s] <- sum(unlist(sse))
-      mu.mse[s] <- mean(unlist(sse)) # vector mse for mu, divide by # exposures 
-    }else{
-      mu.sse <- NULL
-      mu.mse <- NULL
-    }
-    
-    
-    #####################
     ### Store Results ###
     #####################
-    
-    z.save[[s]] <- z
-    K.save[s] <- K 
-    beta.save[[s]] <- beta.k
-    mu.save[[s]] <- mu
-    
-    if(s%in%imputes){
-      # imputed values for complete data sets 
-      y.mar.save[s.imp,] <- unlist(y)[which(unlist(mismat)==1)] # mar imputations
-      y.lod.save[s.imp,] <- unlist(y)[which(unlist(mismat)==2)] # lod imputations
+    if(s >= nburn){
       
-      if(!is.null(ycomplete)){
-        # MSE
-        mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
-        lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
-        
-        # SSE
-        mar.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
-        lod.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
-        
-        # mean bias
-        mar.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
-        lod.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
-        
-        # sum bias
-        mar.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
-        lod.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+      ## Hamming distance ##
+      if(!is.null(unlist(z.true))){
+        ham.error <- hamdist(unlist(z.true), unlist(z)) 
+        ham[s.save] <- ham.error/(n*t.max) # proportion of misplaced states
+      }else{
+        ham <- NULL
+      }    
+      
+      ## MSE for mu ##
+      if(!is.null(mu.true)){
+        sse <- list()
+        for(i in 1:n){
+          sse[[i]] <- sapply(1:t.max, FUN = function(t){
+            as.numeric(crossprod(unlist(mu[z[[i]][t]]) - mu.true[z.true[[i]][t],]))/p
+          })
+        }
+        mu.sse[s.save] <- sum(unlist(sse))
+        mu.mse[s.save] <- mean(unlist(sse)) # vector mse for mu, divide by # exposures 
+      }else{
+        mu.sse <- NULL
+        mu.mse <- NULL
       }
       
-      s.imp <- s.imp+1
+      z.save[[s.save]] <- z
+      K.save[s.save] <- K 
+      beta.save[[s.save]] <- beta.k
+      mu.save[[s.save]] <- mu
+      
+      if(s%in%imputes){
+        # imputed values for complete data sets 
+        y.mar.save[s.imp,] <- unlist(y)[which(unlist(mismat)==1)] # mar imputations
+        y.lod.save[s.imp,] <- unlist(y)[which(unlist(mismat)==2)] # lod imputations
+        
+        if(!is.null(ycomplete)){
+          # MSE
+          mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
+          lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
+          
+          # SSE
+          mar.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
+          lod.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
+          
+          # mean bias
+          mar.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
+          lod.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+          
+          # sum bias
+          mar.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
+          lod.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+        }
+        
+        s.imp <- s.imp+1
+      }
+      s.save = s.save + 1
     }
-    
-    #end.time1 <- Sys.time()
-    #print(s)
-    #if(s %% 10 == 0) print(K)     
-    #if(s %% 10 == 0) print(min(unlist(y)))
-    #print(mhacc)
-    #print(end.time1 - start.time1)
   }
 
-list1 <- list(z.save = z.save[-(1:nburn)], K.save = K.save[-(1:nburn)],
+list1 <- list(z.save = z.save, K.save = K.save,
               ymar = y.mar.save, ylod = y.lod.save,
-              beta.save = beta.save[-(1:nburn)],
-              mu.save = mu.save[-(1:nburn)],
-              hamming = ham[-(1:nburn)], mu.mse = mu.mse[-(1:nburn)], 
-              mu.sse = mu.sse[-(1:nburn)],
+              beta.save = beta.save,
+              mu.save = mu.save,
+              hamming = ham, mu.mse = mu.mse, 
+              mu.sse = mu.sse,
               mar.mse = mar.mse, lod.mse = lod.mse,
               mar.sse = mar.sse, lod.sse = lod.sse,
               mar.bias = mar.bias, lod.bias = lod.bias,

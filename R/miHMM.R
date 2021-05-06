@@ -15,7 +15,7 @@
 #' @param a.tune tuning parameter for MH udpate for lams
 #' @param b.tune tuning parameter for MH update for lams 
 #' @param resK logical; resolvent kernel for MH update a
-#' @param eta.star reslvent kernel parameter for MH update a
+#' @param eta.star resolvent kernel parameter for MH update a
 #' @param len.imp number of imputations to save 
 #'
 #' @importFrom parallel mclapply
@@ -141,7 +141,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   
   for(i in 1:n){
     if(any(mismat[[i]]==2)){ # lod 
-      expLod <- exp(lod)
+      expLod <- exp(lod[[i]])
       numlod <- apply(mismat[[i]], 1, FUN = function(x) length(which(x==2))) # how many LOD
       for(t in which(numlod>0)){ # loop thru LOD data
         whichlod <- which(mismat[[i]][t,]==2) # which exposures are below LOD 
@@ -277,29 +277,29 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   
   z.save <- list()
   mu.save <- list()
-  Sigma.save <- list()
-  K.save <- rep(NA, niter)
-  ham <- rep(NA, niter)
-  mu.mse <- rep(NA, niter)
-  mu.sse <- rep(NA, niter)
-  
-  MH.a <- 0 # for MH update "semi"
-  MH.lam <- 0 # for MH update "semi"
+  beta.save <- list()
+  K.save <- numeric()
+  ham <- numeric()
+  mu.mse <- numeric()
+  mu.sse <- numeric()
+  MH.a <- 0 # for MH update a
+  MH.lam <- 0 # for MH update lams
+  s.save = 1
   
   # missing data sets
   if(!is.null(len.imp)){
     imputes <- ceiling(seq.int(nburn, niter, length.out = len.imp))
     y.mar.save <- matrix(NA, len.imp, length(which(unlist(mismat)==1)))
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
-    mar.mse <- rep(NA, len.imp)
-    lod.mse <- rep(NA, len.imp)
-    mar.sse <- rep(NA, len.imp)
-    lod.sse <- rep(NA, len.imp)
-    miss.mse <- rep(NA, len.imp)
-    mar.bias <- rep(NA, len.imp)
-    lod.bias <- rep(NA, len.imp)
-    mar.sum.bias <- rep(NA, len.imp)
-    lod.sum.bias <- rep(NA, len.imp)
+    mar.mse <- numeric()
+    lod.mse <- numeric()
+    mar.sse <- numeric()
+    lod.sse <- numeric()
+    miss.mse <- numeric()
+    mar.bias <- numeric()
+    lod.bias <- numeric()
+    mar.sum.bias <- numeric()
+    lod.sum.bias <- numeric()
     s.imp <- 1
   }else{
     imputes = 0
@@ -323,136 +323,18 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   ###############
   
   for(s in 1:niter){
+  
+    
+    if (s%%100==0) print(paste("iteration", s, " number of states =", K))
     
     z.prev <- list()
     z.prev <- mclapply(1:n, FUN=function(i) return(z[[i]]))
-    
-    ################
-    ### update u ### 
-    ################
-    
-    u <- list()
-    for(i in 1:n){
-      u[[i]] <- unlist(lapply(1:t.max, FUN = function(t){
-        if(t==1){
-          return(runif(1, 0, pi.z[[1]][z[[i]][1]]))
-        }else{
-          return(runif(1, 0, pi.z[[2]][z[[i]][t-1], z[[i]][t]]))
-        }
-      }))
-    }
-  
-    ###############################
-    ### update State List: Rcpp ###
-    ###############################
-    
-    state.list <- upStateListnox(piz = pi.z, u = u, K = K, tmax = t.max, n = n)
-    
-    ################
-    ### Sample Z ### 
-    ################
-    
-    z1 = upZnox(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff, 
-             nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max, K = K, n = n, d = p)
-    
-    z <- lapply(1:n, FUN = function(i){
-      z = as.numeric(z1[[i]])
-    })
-    
-
-    #########################
-    ### new state fillers ### 
-    #########################
-    
-    if(any(unlist(z)>K)){
-      
-      if(algorithm == "MH"){
-        lamsNew <- 1/rgamma(3, vj0, rate = deltaj0); lamsNew
-        DNew <- diag(lamsNew); DNew
-        al.listNew <- list()
-        for(j in 2:p){
-          al.listNew[[j-1]] <- rnorm(j-1, 0, lamsNew[j])
-        }
-        alNew <- unlist(al.listNew); alNew # for j = 2 to p
-        LNew <- diag(p)
-        lowerTriangle(LNew) <- alNew; LNew
-        SigmaNew <- solve(LNew)%*%DNew%*%t(solve(LNew)) # Sigma[[k]]
-        cholSigmaNew <- chol(SigmaNew)
-        muNew <- rmvn(1, priors$mu0, (1/priors$lambda)*SigmaNew)
-      }else if(algorithm == "Gibbs"){
-        SigmaNew <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = solve(R.mat)),p,p)))
-        muNew <- rmvn(1, priors$mu0, (1/priors$lambda)*SigmaNew)
-      }
-      
-      # sample starting values if we got a new state
-      mu[[K+1]] <- muNew
-      if(algorithm == "MH"){
-        lams[[K+1]] <- lamsNew
-        D[[K+1]] <- DNew
-        al[[K+1]] <- alNew
-        L[[K+1]] <- LNew
-      }
-      Sigma[[K+1]] <- SigmaNew
-      alpha.0k[K+1] <- 0
-      for(k in 1:K){
-        alpha.jk[[k]][K+1] <- rnorm(1, priors$mu.alpha, sqrt(1/sig2inv.alpha))
-      }
-      alpha.jk[[K+1]] <- rnorm(K+1, priors$mu.alpha, sqrt(1/sig2inv.alpha))
-      alpha.jk[[K+1]][K+1] <- priors$m0
-      EnterNew <- TRUE # indicator that we entered into a new state this round 
-    }else{
-      EnterNew <- FALSE # didn't go into a new state 
-    }
-    
-    #########################################
-    ### Relabel the States and Parameters ###
-    #########################################
-    
-    z.new <- recode_Z(unlist(z))
-    splits <- seq(1,n*t.max, t.max)
-    z.new <- lapply(1:length(splits), FUN = function(i) z.new[splits[i]:(splits[i]+t.max-1)])
-    K <- length(sort(unique(unlist(z.new)))) # new K 
-    zu <- sort(unique(unlist(z))) # z.unique (old labels for current states to grab from) 
-    
-    alpha.new <- list()
-    mu.new <- list()
-    Sigma.new <- list()
-    al.new <- list()
-    lams.new <- list()
-    L.new <- list()
-    D.new <- list()
-    
-    rj <- 1
-    for(k in zu){ # 
-      alpha.new[[rj]] <- alpha.jk[[k]][zu]
-      mu.new[[rj]] <- mu[[k]]
-      Sigma.new[[rj]] <- Sigma[[k]]
-      if(algorithm == "MH"){
-        al.new[[rj]] <- al[[k]]
-        lams.new[[rj]] <- lams[[k]]
-        D.new[[rj]] <- D[[k]]
-        L.new[[rj]] <- L[[k]]
-      }
-      rj <- rj + 1
-    }
-    
-    alpha.jk <- alpha.new
-    z <- z.new
-    Sigma <- Sigma.new
-    mu <- mu.new
-    if(algorithm == "MH"){
-      al <- al.new
-      lams <- lams.new 
-      D <- D.new
-      L <- L.new
-    }
-    
-    cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
     
     ######################
     ### update theta_k ###
     ######################
     
+    cholSigma <- lapply(1:K, FUN = function(k) chol(Sigma[[k]]))
     # first update mu and Sigma 
     for(k in 1:K){
       itimes <- lapply(1:n, FUN = function(i)  which(z[[i]] == k))
@@ -594,19 +476,141 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
       log.stuff <- (p/2)*log(priors$lambda/(pi*(priors$lambda+1)))+log(gampp)+(nu.df/2)*log(det(R.mat))
     }
     
+    
+    
+    ################
+    ### update u ### 
+    ################
+    
+    u <- list()
+    for(i in 1:n){
+      u[[i]] <- unlist(lapply(1:t.max, FUN = function(t){
+        if(t==1){
+          return(runif(1, 0, pi.z[[1]][z[[i]][1]]))
+        }else{
+          return(runif(1, 0, pi.z[[2]][z[[i]][t-1], z[[i]][t]]))
+        }
+      }))
+    }
+  
+    ############################
+    ### update State List: R ###
+    ############################
+    
+    # R is faster 
+    state.list = lapply(1:n, FUN = function(i){
+      return(upStateList_lapply_nox(i,u=u, pi.z = pi.z, K = K, t.max = t.max))
+    })
+
+    ################
+    ### Sample Z ### 
+    ################
+    
+    # # this is slow in Rcpp
+    z1 = upZnox(stateList = state.list, y = y, mu = mu, Sigma = Sigma, logStuff = log.stuff,
+             nudf = nu.df, detRstar = detR.star, piz = pi.z, u = u, tmax = t.max, K = K, n = n, d = p)
+
+    z <- lapply(1:n, FUN = function(i){
+      return(as.numeric(z1[[i]]))
+    })
+    
+
+    #########################
+    ### new state fillers ### 
+    #########################
+    
+    if(any(unlist(z)>K)){
+      
+      if(algorithm == "MH"){
+        lamsNew <- 1/rgamma(3, vj0, rate = deltaj0); lamsNew
+        DNew <- diag(lamsNew); DNew
+        al.listNew <- list()
+        for(j in 2:p){
+          al.listNew[[j-1]] <- rnorm(j-1, 0, lamsNew[j])
+        }
+        alNew <- unlist(al.listNew); alNew # for j = 2 to p
+        LNew <- diag(p)
+        lowerTriangle(LNew) <- alNew; LNew
+        SigmaNew <- solve(LNew)%*%DNew%*%t(solve(LNew)) # Sigma[[k]]
+        cholSigmaNew <- chol(SigmaNew)
+        muNew <- rmvn(1, priors$mu0, (1/priors$lambda)*SigmaNew)
+      }else if(algorithm == "Gibbs"){
+        SigmaNew <- chol2inv(chol(matrix(rWishart(1, df = nu.df, Sigma = solve(R.mat)),p,p)))
+        muNew <- rmvn(1, priors$mu0, (1/priors$lambda)*SigmaNew)
+      }
+      
+      # sample starting values if we got a new state
+      mu[[K+1]] <- muNew
+      if(algorithm == "MH"){
+        lams[[K+1]] <- lamsNew
+        D[[K+1]] <- DNew
+        al[[K+1]] <- alNew
+        L[[K+1]] <- LNew
+      }
+      Sigma[[K+1]] <- SigmaNew
+      alpha.0k[K+1] <- 0
+      for(k in 1:K){
+        alpha.jk[[k]][K+1] <- rnorm(1, priors$mu.alpha, sqrt(1/sig2inv.alpha))
+      }
+      alpha.jk[[K+1]] <- rnorm(K+1, priors$mu.alpha, sqrt(1/sig2inv.alpha))
+      alpha.jk[[K+1]][K+1] <- priors$m0
+      EnterNew <- TRUE # indicator that we entered into a new state this round 
+    }else{
+      EnterNew <- FALSE # didn't go into a new state 
+    }
+    
+    #########################################
+    ### Relabel the States and Parameters ###
+    #########################################
+    
+    z.new <- recode_Z(unlist(z))
+    splits <- seq(1,n*t.max, t.max)
+    z.new <- lapply(1:length(splits), FUN = function(i) z.new[splits[i]:(splits[i]+t.max-1)])
+    K <- length(sort(unique(unlist(z.new)))) # new K 
+    zu <- sort(unique(unlist(z))) # z.unique (old labels for current states to grab from) 
+    
+    alpha.new <- list()
+    mu.new <- list()
+    Sigma.new <- list()
+    al.new <- list()
+    lams.new <- list()
+    L.new <- list()
+    D.new <- list()
+    
+    rj <- 1
+    for(k in zu){ # 
+      alpha.new[[rj]] <- alpha.jk[[k]][zu]
+      mu.new[[rj]] <- mu[[k]]
+      Sigma.new[[rj]] <- Sigma[[k]]
+      if(algorithm == "MH"){
+        al.new[[rj]] <- al[[k]]
+        lams.new[[rj]] <- lams[[k]]
+        D.new[[rj]] <- D[[k]]
+        L.new[[rj]] <- L[[k]]
+      }
+      rj <- rj + 1
+    }
+    
+    alpha.jk <- alpha.new
+    z <- z.new
+    Sigma <- Sigma.new
+    mu <- mu.new
+    if(algorithm == "MH"){
+      al <- al.new
+      lams <- lams.new 
+      D <- D.new
+      L <- L.new
+    }
+    
     ################
     ### update W ###
     ################
     
     # for each t, w.z gives me a VECTOR based on the previous time point and values up to the current time point
     # so each w.z[[t]] should be a VECTOR of length z_t
-    w.z <- list()
-    for(i in 1:n){
-      w.z[[i]] <- list()
-      for(t in 1:t.max){
-        w.z[[i]][[t]] <- sapply(1:z[[i]][t], FUN = function(l) upWnone(t=t, l, i, alpha.0k, alpha.jk, z))
-      }
-    }
+    
+    ajkmat = matrix(unlist(alpha.jk), nrow = K, ncol = K)
+    w.z = upW_nox(alpha0 = alpha.0k, ajk = ajkmat, z=z, tmax = t.max, n=n)
     
     #######################
     ### update alpha.0k ### ### done 
@@ -643,18 +647,11 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
     ### update alpha.jk ### ## done 
     #######################
     
-    alpha.jk <- lapply(1:(K), FUN = function(j){
-      unlist(lapply(1:(K), FUN = function(k){
-        updateAlphaJKnone(j=j, k=k, n=n, t.max=t.max, z=z, vinv.alpha=vinv.alpha,
-                          sig2inv.alpha = sig2inv.alpha, w.z = w.z,
-                          m.alpha = m.alpha, mu.alpha = priors$mu.alpha)
-      }))
-    })
     
-    if(anyNA(unlist(alpha.jk))) {
-      stop("NA's in alpha.jk")
-    }
+    alpha.jk = up_ajk_nox(K=K,n=n, tmax = t.max, z = z, vinv_alpha = vinv.alpha, sig2inv_alpha = sig2inv.alpha,
+                      w = w.z, m_alpha = m.alpha, mu_alpha = priors$mu.alpha)
     
+
     ######################
     ### update m.alpha ###
     ######################
@@ -732,7 +729,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
             
             # before, used int = y[[i]][t, whichlod], trying new thing June 30 2020
             y[[i]][t,] <- rtmvn(1, Mean = as.vector(mu[[z[[i]][t]]]), Sigma = Sigma[[z[[i]][t]]], lower = rep(-Inf, p),
-                                upper = lod, int = y[[i]][t,], burn = 10, thin = 1)
+                                upper = lod[[i]], int = y[[i]][t,], burn = 10, thin = 1)
           }else{
             y.obs <- y[[i]][t,-whichlod]
             mu.obs <- mu[[z[[i]][t]]][,-whichlod]
@@ -747,88 +744,81 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
             
             # before, used int = y[[i]][t, whichlod], trying new thing June 30 2020
             y[[i]][t,whichlod] <- rtmvn(1, Mean = mu.mgo, Sigma = Sigma.mgo, lower = rep(-Inf, length(whichlod)),
-                                        upper = lod[whichlod], int = y[[i]][t, whichlod], burn = 10, thin = 1)
-            
-            # tryCatch({
-            #   y[[i]][t,whichlod] <- rtmvn(1, Mean = mu.mgo, Sigma = Sigma.mgo, lower = rep(-Inf, length(whichlod)),
-            #                               upper = lod[whichlod], int = lod[whichlod]-1, burn = 10, thin = 1) }, 
-            #   error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+                                        upper = lod[[i]][whichlod], int = y[[i]][t, whichlod], burn = 10, thin = 1)
+
             
           }
         }
       }
     }
     
-    
-    
-    #####################
-    ### Error Measure ###
-    #####################
-    
-    ## Hamming distance ##
-    if(!is.null(unlist(z.true))){
-      ham.error <- hamdist(unlist(z.true), unlist(z)) 
-      ham[s] <- ham.error/(n*t.max) # proportion of misplaced states
-    }else{
-      ham <- NULL
-    }    
-    
-    ## MSE for mu ##
-    if(!is.null(mu.true)){
-      sse <- list()
-      for(i in 1:n){
-        sse[[i]] <- sapply(1:t.max, FUN = function(t){
-          as.numeric(crossprod(unlist(mu[z[[i]][t]]) - mu.true[z.true[[i]][t],]))/p
-        })
-      }
-      mu.sse[s] <- sum(unlist(sse))
-      mu.mse[s] <- mean(unlist(sse)) # vector mse for mu, divide by # exposures 
-    }else{
-      mu.sse <- NULL
-      mu.mse <- NULL
-    }
-    
-    
     #####################
     ### Store Results ###
     #####################
     
-    z.save[[s]] <- z
-    K.save[s] <- K 
-    mu.save[[s]] <- mu
-    
-    if(s%in%imputes){
-      # imputed values for complete data sets 
-      y.mar.save[s.imp,] <- unlist(y)[which(unlist(mismat)==1)] # mar imputations
-      y.lod.save[s.imp,] <- unlist(y)[which(unlist(mismat)==2)] # lod imputations
+    if(s >= nburn){
       
-      if(!is.null(ycomplete)){
-        # MSE
-        mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
-        lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
-        
-        # SSE
-        mar.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
-        lod.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
-        
-        # mean bias
-        mar.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
-        lod.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
-        
-        # sum bias
-        mar.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
-        lod.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+      ## Hamming distance ##
+      if(!is.null(unlist(z.true))){
+        ham.error <- hamdist(unlist(z.true), unlist(z)) 
+        ham[s.save] <- ham.error/(n*t.max) # proportion of misplaced states
+      }else{
+        ham <- NULL
+      }    
+      
+      ## MSE for mu ##
+      if(!is.null(mu.true)){
+        sse <- list()
+        for(i in 1:n){
+          sse[[i]] <- sapply(1:t.max, FUN = function(t){
+            as.numeric(crossprod(unlist(mu[z[[i]][t]]) - mu.true[z.true[[i]][t],]))/p
+          })
+        }
+        mu.sse[s.save] <- sum(unlist(sse))
+        mu.mse[s.save] <- mean(unlist(sse)) # vector mse for mu, divide by # exposures 
+      }else{
+        mu.sse <- NULL
+        mu.mse <- NULL
       }
       
-      s.imp <- s.imp+1
+      z.save[[s.save]] <- z
+      K.save[s.save] <- K 
+      mu.save[[s.save]] <- mu
+      
+      if(s%in%imputes){
+        # imputed values for complete data sets 
+        y.mar.save[s.imp,] <- unlist(y)[which(unlist(mismat)==1)] # mar imputations
+        y.lod.save[s.imp,] <- unlist(y)[which(unlist(mismat)==2)] # lod imputations
+        
+        if(!is.null(ycomplete)){
+          # MSE
+          mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
+          lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
+          
+          # SSE
+          mar.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
+          lod.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
+          
+          # mean bias
+          mar.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
+          lod.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+          
+          # sum bias
+          mar.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
+          lod.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+        }
+        
+        s.imp <- s.imp+1
+      }
+      s.save = s.save + 1
     }
   }
   
-  list1 <- list(z.save = z.save[-(1:nburn)], K.save = K.save[-(1:nburn)],
+  list1 <- list(z.save = z.save, K.save = K.save,
                 ymar = y.mar.save, ylod = y.lod.save,
-                mu.save = mu.save[-(1:nburn)],
-                hamming = ham[-(1:nburn)], mu.mse = mu.mse[-(1:nburn)], 
-                mu.sse = mu.sse[-(1:nburn)],
+                mu.save = mu.save,
+                hamming = ham, mu.mse = mu.mse, 
+                mu.sse = mu.sse,
                 mar.mse = mar.mse, lod.mse = lod.mse, 
                 mar.sse = mar.sse, lod.sse = lod.sse, 
                 mar.bias = mar.bias, lod.bias = lod.bias,

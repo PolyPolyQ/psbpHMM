@@ -17,6 +17,30 @@ rcpparma_bothproducts <- function(x) {
     .Call(`_psbpHMM_rcpparma_bothproducts`, x)
 }
 
+up_ajk_rm <- function(K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, X, beta_k, beta_sk, m_alpha, mu_alpha) {
+    .Call(`_psbpHMM_up_ajk_rm`, K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, X, beta_k, beta_sk, m_alpha, mu_alpha)
+}
+
+up_ajk <- function(K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, X, beta_k, m_alpha, mu_alpha) {
+    .Call(`_psbpHMM_up_ajk`, K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, X, beta_k, m_alpha, mu_alpha)
+}
+
+up_ajk_nox <- function(K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, m_alpha, mu_alpha) {
+    .Call(`_psbpHMM_up_ajk_nox`, K, n, tmax, z, vinv_alpha, sig2inv_alpha, w, m_alpha, mu_alpha)
+}
+
+upW_rm <- function(alpha0, X, beta, beta_rm, ajk, z, tmax, n) {
+    .Call(`_psbpHMM_upW_rm`, alpha0, X, beta, beta_rm, ajk, z, tmax, n)
+}
+
+upW <- function(alpha0, X, beta, ajk, z, tmax, n) {
+    .Call(`_psbpHMM_upW`, alpha0, X, beta, ajk, z, tmax, n)
+}
+
+upW_nox <- function(alpha0, ajk, z, tmax, n) {
+    .Call(`_psbpHMM_upW_nox`, alpha0, ajk, z, tmax, n)
+}
+
 invMat <- function(x) {
     .Call(`_psbpHMM_invMat`, x)
 }
@@ -33,12 +57,12 @@ updatePi_rm <- function(beta, beta_sk, X, a0, ajk, tmax) {
     .Call(`_psbpHMM_updatePi_rm`, beta, beta_sk, X, a0, ajk, tmax)
 }
 
-returnPi <- function() {
-    .Call(`_psbpHMM_returnPi`)
-}
-
 mvndensity <- function(y, mu, Sigma, d) {
     .Call(`_psbpHMM_mvndensity`, y, mu, Sigma, d)
+}
+
+logmvndensity <- function(y, mu, Sigma, d) {
+    .Call(`_psbpHMM_logmvndensity`, y, mu, Sigma, d)
 }
 
 upZ <- function(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d) {
@@ -49,6 +73,10 @@ upZnox <- function(stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tm
     .Call(`_psbpHMM_upZnox`, stateList, y, mu, Sigma, logStuff, nudf, detRstar, piz, u, tmax, K, n, d)
 }
 
+getWhich_greater <- function(a, num, K) {
+    .Call(`_psbpHMM_getWhich_greater`, a, num, K)
+}
+
 upStateList <- function(piz, u, K, tmax, n) {
     .Call(`_psbpHMM_upStateList`, piz, u, K, tmax, n)
 }
@@ -57,15 +85,11 @@ upStateListnox <- function(piz, u, K, tmax, n) {
     .Call(`_psbpHMM_upStateListnox`, piz, u, K, tmax, n)
 }
 
-createMat <- function(n, niter, Zmat) {
-    .Call(`_psbpHMM_createMat`, n, niter, Zmat)
+getWhich_equal <- function(a, k) {
+    .Call(`_psbpHMM_getWhich_equal`, a, k)
 }
 
-minDist <- function(niter, K, n, Z, Prob) {
-    .Call(`_psbpHMM_minDist`, niter, K, n, Z, Prob)
-}
-
-vectorMean <- function(a, b) {
-    .Call(`_psbpHMM_vectorMean`, a, b)
+vectorSame <- function(a, b) {
+    .Call(`_psbpHMM_vectorSame`, a, b)
 }
 
