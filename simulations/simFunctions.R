@@ -112,42 +112,16 @@ simdatsimple <- function(n, t.max=24, tempTrend = TRUE, lodRemove = FALSE, marRe
   
   
   if(lodRemove){
-    lod <- apply(ymat, 2, FUN = function(x) quantile(x, lodmis))
+    lod = list()
     for(i in 1:n){
+      lod[[i]] = apply(y[[i]], 2, FUN = function(x) quantile(x, lodmis, na.rm = TRUE))
       for(j in 1:p){
-        y[[i]][which(y[[i]][,j] <= lod[j]),j] <- -Inf
+        y[[i]][which(y[[i]][,j] <= lod[[i]][j]),j] <- -Inf
       }
     }
   }else{
     lod <- NULL
   }
-  
-  # # check
-  # ycomp <- rbind(y[[1]],y[[2]])
-  # length(which(ycomp[,1]<lod[1]))
-  # length(which(ycomp[,2]<lod[2]))
-  # length(which(ycomp[,3]<lod[3]))
-  # 
-  # #check how much missing
-  # for(i in 1:n){
-  #   print(length(which(is.na(unlist(y[[i]])))))
-  #   print(length(which(unlist(y[[i]])==-Inf)))
-  # }
-  
-  length(which(unlist(y)==-Inf))
-  
-  ycomp <- rbind(y.complete[[1]], y.complete[[2]])
-  ymiss <- rbind(y[[1]], y[[2]])
-  
-  length(which(ycomp[,1]<lod[1]))
-  length(which(ymiss[,1]==-Inf))
-  
-  length(which(ycomp[,2]<lod[2]))
-  length(which(ymiss[,2]==-Inf))
-  
-  length(which(ycomp[,3]<lod[3]))
-  length(which(ymiss[,3]==-Inf))
-  
   
   list1 <- list(y = y, y.complete = y.complete,
                 z.true = z.true, K = K, mu.true = mu.true.sc, Sigma.true = Sigma.true,

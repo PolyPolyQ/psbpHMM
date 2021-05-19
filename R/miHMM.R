@@ -43,7 +43,8 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
     SigmaPrior = "wishart"
   }else{
     algorithm = "Gibbs"
-    SigmaPrior = "non-informative"
+    #SigmaPrior = "non-informative"
+    SigmaPrior = "wishart"
   }
   
   #####################

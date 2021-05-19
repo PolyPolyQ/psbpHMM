@@ -57,7 +57,8 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     SigmaPrior = "wishart"
   }else{
     algorithm = "Gibbs"
-    SigmaPrior = "non-informative"
+    #SigmaPrior = "non-informative"
+    SigmaPrior = "wishart"
   }
   
   if(is.null(rmlist)) beta.sk = NULL
@@ -367,7 +368,8 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   #start.time = Sys.time()
   for(s in 1:niter){
     
-    
+    #print(paste("Sigma:", round(max(unlist(Sigma)),2)))
+    # print(paste("mu:", round(max(abs(unlist(mu))),2)))
     # par(mfrow = c(1,2))
     # plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
     # abline(h = lod[[1]][1])

@@ -48,7 +48,8 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     SigmaPrior = "wishart"
   }else{
     algorithm = "Gibbs"
-    SigmaPrior = "non-informative"
+    #SigmaPrior = "non-informative"
+    SigmaPrior = "wishart"
   }
   
   
