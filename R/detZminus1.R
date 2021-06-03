@@ -7,7 +7,6 @@
 #' @param t.max length of time series
 #'
 #' @return list of current and previous possible states
-#' @export
 #'
 
 detZminus1 <- function(i,sli, pizi, ui, t.max){

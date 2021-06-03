@@ -113,8 +113,11 @@ simdatsimple <- function(n, t.max=24, tempTrend = TRUE, lodRemove = FALSE, marRe
   
   if(lodRemove){
     lod = list()
+    lod.old = apply(ymat, 2, FUN = function(x) quantile(x, lodmis, na.rm = TRUE))
+    
     for(i in 1:n){
-      lod[[i]] = apply(y[[i]], 2, FUN = function(x) quantile(x, lodmis, na.rm = TRUE))
+      lod[[i]] = lod.old
+      #lod[[i]] = apply(y[[i]], 2, FUN = function(x) quantile(x, lodmis, na.rm = TRUE))
       for(j in 1:p){
         y[[i]][which(y[[i]][,j] <= lod[[i]][j]),j] <- -Inf
       }

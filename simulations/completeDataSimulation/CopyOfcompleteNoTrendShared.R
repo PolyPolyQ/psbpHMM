@@ -14,7 +14,6 @@ library(Rcpp)
 library(RcppArmadillo)
 library(microbenchmark)
 
-library(markovPSBP)
 library(psbpHMM)
 
 library(gdata)
@@ -101,9 +100,9 @@ fit1 <- mciHMM(niter=niter, nburn=nburn, y=y, ycomplete=ycomplete, X=X,
                priors=priors, z.true=z.true,
                mu.true=mu.true, missing = missing)
 
-fit1nox <- fitMarkovNone(niter = niter, nburn = nburn, y=dat1$y, ycomplete = dat1$y.complete,
-                         priors = priors, K.start = NULL, z.true = dat1$z.true, lod = dat1$lod, 
-                         mu.true = dat1$mu.true, SigmaPrior = SigmaPrior, algorithm = algorithm)
+fit1nox <- mciHMM(niter=niter, nburn=nburn, y=y, ycomplete=ycomplete, 
+                  priors=priors, z.true=z.true,
+                  mu.true=mu.true, missing = missing)
 
 #################################
 ### Posterior Summary: Shared ###
@@ -122,8 +121,8 @@ df <- data.frame(ham.bc, ham, mu.mse)
 rownames(df) <- c("cyclical-PSBP-iHMM", "PSBP-iHMM")
 
 #df
-# cat results/ccNoTrendShared*.csv > combined_results/ccrNoTrendSharedResults.txt
-write.table(df, file = paste0("/projects/lvheck@colostate.edu/markovPSBP/simulations/results/ccNoTrendShared", simnum, ".csv"),
+# cat results/completeNoTrendShared*.csv > combined_results/completeNoTrendSharedResults.txt
+write.table(df, file = paste0("/projects/lvheck@colostate.edu/psbpHMM/simulations/results/completeNoTrendShared", simnum, ".csv"),
             row.names = TRUE, col.names = FALSE, sep = ",")
 
 

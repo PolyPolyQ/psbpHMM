@@ -1,11 +1,11 @@
-#' calculate model averaged estimates of harmonic trend (X beta)
+#' calculate model averaged estimates of harmonic trend (X %*% beta)
 #'
 #' @param fit object of type "ihmm"
 #' @param zbest1 results from bestClusteriHMM
 #' @param X covariates 
 #'
 #' @importFrom stats quantile
-#' @return model averaged betas
+#' @return model averaged estimates of X %*% beta, state-specific covariate effect
 #' @export
 #'
 modelAveBeta <- function(fit, zbest1, X){

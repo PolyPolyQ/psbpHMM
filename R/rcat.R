@@ -2,7 +2,6 @@
 #'
 #' @param probs n by K matrix of probabilities n subjects to be assigned to K categories 
 #'
-#' @export 
 #' @return return vector of length nrow(probs) of categorical indicators
 #'
 #'

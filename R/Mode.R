@@ -3,7 +3,6 @@
 #' @param x vector of factors/integers
 #'
 #' @return all modes of x 
-#' @export
 #'
 
 Mode <- function(x) {

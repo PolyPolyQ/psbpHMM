@@ -3,7 +3,7 @@
 #' @param fit object of type "ihmm"
 #' @param zbest1 results from best 
 #'
-#' @return model averaged estimates of mu
+#' @return model averaged estimates of mu, state-specific means
 #' @export
 #'
 #' 

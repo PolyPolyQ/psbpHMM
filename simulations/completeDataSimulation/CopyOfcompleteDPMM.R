@@ -3,15 +3,15 @@
 ### DPMM 
 ### Lauren Hoskovec
 
-# rm(list=ls())
-# gc()
+rm(list=ls())
+gc()
 
 #################
 ### Libraries ###
 #################
 
 library(gdata)
-library(markovPSBP)
+library(pspbHMM)
 library(gtools)
 library(mvtnorm)
 library(matrixcalc)
@@ -25,12 +25,12 @@ library(truncnorm)
 #############
 
 ## Summit
-simnum <- as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID'))
-source("/projects/lvheck@colostate.edu/markovPSBP/simulations/simFunctions.R")
+# simnum <- as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID'))
+# source("/projects/lvheck@colostate.edu/psbpHMM/simulations/simFunctions.R")
 
 ## Mac 
-# simnum <- ceiling(runif(1, 0, 1000));simnum
-# source("simulations/simFunctions.R")
+simnum <- ceiling(runif(1, 0, 1000));simnum
+source("simulations/simFunctions.R")
 
 #####################
 ### Simulate Data ###
@@ -51,34 +51,34 @@ dat2 <- simdatsimple(n = n, t.max = t.max, tempTrend = FALSE, lodRemove = FALSE,
 
 p=3
 priors = list(bj = rep(10, p))
-K.start <- NULL
-SigmaPrior = "non-informative" 
-algorithm = "Gibbs"
-H = "jointNIW"
+K.start = NULL
+missing = FALSE
+len.imp = NULL
 
-niter = 5000
-nburn = 2500
-
-
-niter = 500
-nburn = 250
+niter = 50
+nburn = 25
 
 ##################
 ### Fit Models ###
 ##################
 
+y=dat1$y
+ycomplete = dat1$y.complete
+z.true = dat1$z.true
+lod = dat1$lod
+mu.true = dat1$mu.true
+
+
 st = Sys.time()
 # shared trends
 fitdpmm1 <- fitDPMM(niter = niter, nburn = nburn, y=dat1$y, ycomplete = dat1$y.complete,
                    priors = priors, K.start = NULL, z.true = dat1$z.true, lod = dat1$lod, 
-                   mu.true = dat1$mu.true, SigmaPrior = "wish", algorithm = "MH", 
-                   tau2 = 0.3, a.tune = 10, b.tune = 2)
+                   mu.true = dat1$mu.true, missing = FALSE)
 
 # distinct trends
 fitdpmm2 <- fitDPMM(niter = niter, nburn = nburn, y=dat2$y, ycomplete = dat2$y.complete,
                    priors = priors, K.start = NULL, z.true = dat2$z.true, lod = dat2$lod, 
-                   mu.true = dat2$mu.true, SigmaPrior = "wish", algorithm = "MH", 
-                   tau2 = 0.3, a.tune = 10, b.tune = 2)
+                   mu.true = dat2$mu.true, missing = FALSE)
 en = Sys.time()
 en - st
 

@@ -1,21 +1,21 @@
-#' Fit DPMM with stick breaking process 
+#' Fit truncated joint DPMM to multiple time series 
 #'
-#' @param niter number of iterations
-#' @param nburn burn-in
-#' @param y list of time data for each time series 
-#' @param ycomplete complete data for evaluating imputation 
+#' @param niter number of total iterations
+#' @param nburn number of burn-in iterations
+#' @param y list of time series data for each time series 
+#' @param ycomplete complete data, if available, for evaluating imputations
 #' @param priors list of priors
-#' @param K.start starting value number of states
-#' @param z.true list of true hidden states for error measure  
-#' @param lod vector of lower limits of detection for p exposures
-#' @param mu.true matrix of true exposure means for each true state 
+#' @param K.start maximum allowable number of states
+#' @param z.true list of true hidden states, if known
+#' @param lod list of lower limits of detection for p exposures for each time series
+#' @param mu.true matrix of true exposure means for each true state, if known 
 #' @param missing logical; if TRUE then the data set contains missing data, default is FALSE
-#' @param tau2 tuning parameter for MH algorithm for reparameterized Sigma 
-#' @param a.tune tuning parameter for MH algorithm for reparameterized Sigma 
-#' @param b.tune tuning parameter for MH algorithm for reparameterized Sigma 
-#' @param resK logical; resolvent kernel for MH update a
-#' @param eta.star reslvent kernel parameter for MH update a
-#' @param len.imp number of imputations to save 
+#' @param tau2 variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma
+#' @param a.tune shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
+#' @param b.tune rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
+#' @param resK logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma
+#' @param eta.star resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.
+#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
 #'
 #' @importFrom parallel mclapply
 #' @importFrom stats rnorm runif rgamma rWishart cov cov2cor dnorm rgeom rbeta 
@@ -26,7 +26,25 @@
 #' @importFrom invgamma dinvgamma
 #' @importFrom gdata lowerTriangle<-
 #'
-#' @return list of results 
+#' @return an object of type "dpmm"
+#'
+#' @return a list with components
+#' \itemize{
+#'        \item z.save: list of estimated hidden states for each time series at each iteration
+#'        \item K.save: list of estimated number of hidden states for each time series at each iteration
+#'        \item ymar: matrix of imputed values for MAR data, number of rows equal to len.imp
+#'        \item ylod: matrix of imputed values for data below LOD, number of rows equal to len.imp
+#'        \item hamming: posterior hamming distance between true and estimated states, if z.true is given
+#'        \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
+#'        \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
+#'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
+#'        \item mar.bias: mean bias of MAR imputations, if ycomplete is given
+#'        \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
+#'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
+#'        \item ycomplete: complete data
+#'        \item MH.arate: average MH acceptance rate for lower triangular elements
+#'        \item MH.lamrate: average MH acceptance rate for diagonal elements 
+#' }
 #' @export
 
 fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
@@ -294,8 +312,19 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     #####################
     ### initial stuff ### 
     #####################
-    #K_unique = length(unique(unlist(z)))
-    #print(paste("iteration", s, "number of clusters =", K_unique))
+    K_unique = length(unique(unlist(z)))
+    print(paste("iteration", s, "number of clusters =", K_unique))
+    
+    par(mfrow = c(1,2))
+    plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
+    abline(h = lod[[1]][1])
+    plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z.true[[1]])
+    abline(h = lod[[1]][1])
+    plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
+    abline(h = lod[[2]][1])
+    plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z.true[[2]])
+    abline(h = lod[[2]][1])
+    
 
     ##################################
     ### update cluster assignments ###

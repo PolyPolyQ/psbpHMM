@@ -7,7 +7,6 @@
 #' @param t.max time series length
 #'
 #' @return updated state list
-#' @export
 #'
 upStateList_lapply = function(i,u,pi.z,K,t.max){
   for.list <- list()

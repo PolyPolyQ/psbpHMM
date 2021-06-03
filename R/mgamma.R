@@ -3,7 +3,6 @@
 #' @param nu nu (Wishart df)
 #' @param p p (dimension of Sigma; number of exposures)
 #'
-#' @export 
 #' @return Gamma_p((nu+1)/2)/Gamma_p(nu/2)
 
 

@@ -7,7 +7,6 @@
 #' @param t.max time series length
 #'
 #' @return udpated state list
-#' @export
 #'
 upStateList_lapply_nox = function(i,u,pi.z,K,t.max){
   for.list <- list()

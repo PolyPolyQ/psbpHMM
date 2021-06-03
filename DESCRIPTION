@@ -8,7 +8,7 @@ Maintainer: Lauren Hoskovec <lvheck@rams.colostate.edu>
 Description: This package fits PSPB iHMMs. 
 License: GPL (>= 2)
 Encoding: UTF-8
-Imports: Rcpp (>= 1.0.5), mvtnorm, truncnorm, stats, tmvtnorm, parallel, tmvmixnorm, matrixcalc, mvnfast, gdata, invgamma
+Imports: Rcpp (>= 1.0.5), mvtnorm, truncnorm, stats, tmvtnorm, parallel, tmvmixnorm, matrixcalc, mvnfast, gdata, invgamma, salso
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.1.1
 

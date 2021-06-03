@@ -9,7 +9,6 @@
 #' @param X covariates 
 #'
 #' @return w minus X%*%beta
-#' @export
 #'
 
 wMinusb <- function(i, t, k, w.z, beta.k, beta.sk=NULL, X){

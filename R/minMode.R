@@ -3,7 +3,6 @@
 #' @param x vector of states 
 #'
 #' @return least common value 
-#' @export
 
 minMode <- function(x){
   ux <- unique(x)

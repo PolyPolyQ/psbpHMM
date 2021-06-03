@@ -2,7 +2,7 @@
 #'
 #' @param x data
 #'
-#' @return matrix same size as x, NA's are 1, -Inf's are 2, observed data are 0
+#' @return matrix same size as x, recoded to denote missing type. 0 = observed, 1 = NA (missing at random), 2 = -Inf (below LOD)
 #' @export
 #'
 

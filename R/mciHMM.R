@@ -1,23 +1,24 @@
 #' Fit mc-iHMM with X defined (covariates, harmonic trend) with or without repeated measures
 #'
-#' @param niter number of iterations
-#' @param nburn burn-in
-#' @param y list of time data for each time series 
-#' @param rmlist vector identifying repeated measures
-#' @param ycomplete complete data for evaluating imputation 
-#' @param X list of design matrix for each i 
+#' @param niter number of total iterations
+#' @param nburn number of burn-in iterations
+#' @param y list of time series data for each time series 
+#' @param rmlist integer vector identifying repeated time series for the same subject with the same number (e.g. c(1,1,2,2,2,3,3))
+#' @param ycomplete complete data, if available, for evaluating imputations
+#' @param X list, matrix of covariates for each time series
 #' @param priors list of priors
-#' @param K.start starting value number of states
-#' @param z.true list of true hidden states for error measure  
-#' @param lod vector of lower limits of detection for p exposures
-#' @param mu.true matrix of true exposure means for each true state 
+#' @param K.start starting number of states
+#' @param z.true list of true hidden states, if known
+#' @param lod list of lower limits of detection for p exposures for each time series
+#' @param mu.true matrix of true exposure means for each true state, if known 
 #' @param missing logical; if TRUE then the data set y contains missing data, default is FALSE
-#' @param tau2 tuning parameter for MH update for a 
-#' @param a.tune tuning parameter for MH udpate for lams
-#' @param b.tune tuning parameter for MH update for lams 
-#' @param resK logical; resolvent kernel for MH update a
-#' @param eta.star reslvent kernel parameter for MH update a
-#' @param len.imp number of imputations to save 
+#' @param tau2 variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma
+#' @param a.tune shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
+#' @param b.tune rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
+#' @param resK logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma
+#' @param eta.star resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.
+#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
+#' @param holdout list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes
 #'
 #' @importFrom parallel mclapply
 #' @importFrom stats rnorm runif var rgamma kmeans rWishart cov cov2cor dnorm rgeom pnorm 
@@ -27,14 +28,41 @@
 #' @importFrom invgamma dinvgamma
 #' @importFrom gdata lowerTriangle<-
 #'
-#' @return list of results 
+#' @return an object of type "iHMM"
+#'
+#' @return a list with components
+#' \itemize{
+#'        \item z.save: list of estimated hidden states for each time series at each iteration
+#'        \item K.save: list of estimated number of hidden states for each time series at each iteration
+#'        \item ymar: matrix of imputed values for MAR data, number of rows equal to len.imp
+#'        \item ylod: matrix of imputed values for data below LOD, number of rows equal to len.imp
+#'        \item beta.save: list of posterior estimates of beta_k, state-specific regression coefficients in PSBP 
+#'        \item beta_rm.save: list of posterior estimates of beta_sk, state-specific subject-specific regression coefficients in PSBP
+#'        \item mu.save: list of posterior estimates of mu_k, state-specific means 
+#'        \item hamming: posterior hamming distance between true and estimated states, if z.true is given
+#'        \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
+#'        \item mu.sse: sum of squared errors for estimated state-specific means, if mu.true is given
+#'        \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
+#'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
+#'        \item mar.sse: sum of squared errors of MAR imputations, if ycomplete is given 
+#'        \item lod.sse: sum of squared errors of imputations below LOD, if ycomplete is given 
+#'        \item mar.bias: mean bias of MAR imputations, if ycomplete is given
+#'        \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
+#'        \item mar.sum.bias: sum of bias of MAR imputations, if ycomplete is given
+#'        \item lod.sum.bias: sum of bias of imputations below LOD, if ycomplete is given
+#'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
+#'        \item ycomplete: complete data
+#'        \item MH.arate: average MH acceptance rate for lower triangular elements
+#'        \item MH.lamrate: average MH acceptance rate for diagonal elements 
+#' }
 #' @export
 #'
 mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
                         priors=NULL, K.start=NULL, z.true=NULL, lod=NULL,
                         mu.true=NULL, missing = FALSE, 
                         tau2 = NULL, a.tune = NULL, b.tune = NULL,
-                        resK = FALSE, eta.star = NULL, len.imp = NULL){
+                        resK = FALSE, eta.star = NULL, len.imp = NULL,
+                        holdout = NULL){
 
 ## build package and test data analysis on this 
 ## can still make some functions faster 
@@ -150,6 +178,8 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   for(i in 1:n){
     mismat[[i]] <- matrix(sapply(y[[i]], ismissing), ncol = p)
   }
+  
+  if(is.null(holdout)) holdout = mismat
   
   mism <- numeric()
   for(i in 1:n){
@@ -320,6 +350,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   z.save <- list()
   mu.save <- list()
   beta.save <- list()
+  beta_rm.save <- list() # check bottom for this 
   K.save <- numeric()
   ham <- numeric()
   mu.mse <- numeric()
@@ -359,9 +390,6 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     s.imp <- NULL
   }
 
-  
-
-  
   ###############
   ### Sampler ###
   ###############
@@ -1014,6 +1042,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       z.save[[s.save]] <- z
       K.save[s.save] <- K 
       beta.save[[s.save]] <- beta.k
+      beta_rm.save[[s.save]] <- beta.sk
       mu.save[[s.save]] <- mu
       
       if(s%in%imputes){
@@ -1022,21 +1051,23 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
         y.lod.save[s.imp,] <- unlist(y)[which(unlist(mismat)==2)] # lod imputations
         
         if(!is.null(ycomplete)){
+          
+          # holdout = mismat if not given 
           # MSE
-          mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
-          lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
+          mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(holdout)==1)] - unlist(y)[which(unlist(holdout)==1)])^2)
+          lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(holdout)==2)] - unlist(y)[which(unlist(holdout)==2)])^2)
           
           # SSE
-          mar.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==1)] - unlist(y)[which(unlist(mismat)==1)])^2)
-          lod.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(mismat)==2)] - unlist(y)[which(unlist(mismat)==2)])^2)
+          mar.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(holdout)==1)] - unlist(y)[which(unlist(holdout)==1)])^2)
+          lod.sse[s.imp] <- sum((unlist(ycomplete)[which(unlist(holdout)==2)] - unlist(y)[which(unlist(holdout)==2)])^2)
           
           # mean bias
-          mar.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
-          lod.bias[s.imp] <- mean((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+          mar.bias[s.imp] <- mean((unlist(y)[which(unlist(holdout)==1)] - unlist(ycomplete)[which(unlist(holdout)==1)]))
+          lod.bias[s.imp] <- mean((unlist(y)[which(unlist(holdout)==2)] - unlist(ycomplete)[which(unlist(holdout)==2)]))
           
           # sum bias
-          mar.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==1)] - unlist(ycomplete)[which(unlist(mismat)==1)]))
-          lod.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(mismat)==2)] - unlist(ycomplete)[which(unlist(mismat)==2)]))
+          mar.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(holdout)==1)] - unlist(ycomplete)[which(unlist(holdout)==1)]))
+          lod.sum.bias[s.imp] <- sum((unlist(y)[which(unlist(holdout)==2)] - unlist(ycomplete)[which(unlist(holdout)==2)]))
         }
         
         s.imp <- s.imp+1
@@ -1048,6 +1079,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
 list1 <- list(z.save = z.save, K.save = K.save,
               ymar = y.mar.save, ylod = y.lod.save,
               beta.save = beta.save,
+              beta_rm.save = beta_rm.save,
               mu.save = mu.save,
               hamming = ham, mu.mse = mu.mse, 
               mu.sse = mu.sse,

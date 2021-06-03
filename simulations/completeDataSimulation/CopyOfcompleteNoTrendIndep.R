@@ -14,7 +14,6 @@ library(Rcpp)
 library(RcppArmadillo)
 library(microbenchmark)
 
-library(markovPSBP)
 library(psbpHMM)
 
 library(gdata)
@@ -106,9 +105,9 @@ fitindep1 <- mclapply(1:n, FUN = function(i){
 
 
 fitindep1nox <- mclapply(1:n, FUN = function(i){
-  fitMarkovNone(niter = niter, nburn = nburn, y=dat1$y[[i]], ycomplete = dat1$y.complete[[i]], 
-                priors = priors, K.start = NULL, z.true = dat1$z.true[[i]], lod = dat1$lod, 
-                mu.true = dat1$mu.true, SigmaPrior = SigmaPrior, algorithm = algorithm)
+  miHMM(niter=niter, nburn=nburn, y=y[[i]], ycomplete=ycomplete[[i]],
+        priors=priors, z.true=z.true[[i]],
+        mu.true=mu.true, missing = missing)
 })
 
 #################################
@@ -136,8 +135,8 @@ df2 <- data.frame(ham.bc, ham, mu.mse)
 rownames(df2) <- c("ind-cyclical-PSBP-iHMM", "ind-PSBP-iHMM")
 
 #df2
-# cat results/ccNoTrendIndep*.csv > combined_results/ccrNoTrendIndepResults.txt
-write.table(df2, file = paste0("/projects/lvheck@colostate.edu/markovPSBP/simulations/results/ccNoTrendIndep", simnum, ".csv"), 
+# cat results/completeNoTrendIndep*.csv > combined_results/completeNoTrendIndepResults.txt
+write.table(df2, file = paste0("/projects/lvheck@colostate.edu/psbpHMM/simulations/results/completeNoTrendIndep", simnum, ".csv"), 
             row.names = TRUE, col.names = FALSE, sep = ",")
 
 

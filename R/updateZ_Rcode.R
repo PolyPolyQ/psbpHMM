@@ -13,7 +13,6 @@
 #' @param sli state lists
 #'
 #' @return updated states
-#' @export 
 #'
 
 updateZ_Rcode <- function(i, yi, mu, cholSigma, detR.stari, nu.df, K, log.stuff, t.max, detz, sli){

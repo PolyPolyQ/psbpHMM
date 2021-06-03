@@ -131,14 +131,14 @@ p <- 3
 ### Set Priors and Parameters ###
 #################################
 
-niter = 500
-nburn = 250
+niter = 1000
+nburn = 500
 
 y = dat1$y
 rmlist = NULL
 ycomplete = dat1$y.complete
 priors = list(bj = rep(10, p))
-K.start = NULL
+K.start = 12
 z.true = dat1$z.true
 lod = NULL
 mu.true = dat1$mu.true
@@ -154,35 +154,23 @@ len.imp = NULL
 ### Fit Models ###
 ##################
 
+# fit model with harmonic trend
 st = Sys.time()
 fit1 <- mciHMM(niter=niter, nburn=nburn, y=y, ycomplete=ycomplete, X=X,
-                           priors=priors, z.true=z.true,
+                           priors=priors, z.true=z.true, K.start = K.start,
                            mu.true=mu.true, missing = missing)
 en = Sys.time()
 en - st
 
 
-zbest = bestClusteriHMM(fit1)
-
-mean(fit1$hamming)
-mean(fit1$mu.mse)
-
-
-
-X = X[[1]]
-library(markovPSBP)
-st1 = Sys.time()
-fit1old <- fitMarkovSame(niter = niter, nburn = nburn, y=dat1$y, ycomplete = dat1$y.complete, X=X, 
-                      priors = priors, K.start = NULL, z.true = dat1$z.true, lod = dat1$lod, 
-                      mu.true = dat1$mu.true, missing = FALSE)
-en1 = Sys.time()
-en1 - st1
-
-# not written in Rcpp yet 
-fit1nox <- fitMarkovNone(niter = niter, nburn = nburn, y=dat1$y, ycomplete = dat1$y.complete,
-                         priors = priors, K.start = NULL, z.true = dat1$z.true, lod = dat1$lod, 
-                         mu.true = dat1$mu.true, SigmaPrior = SigmaPrior, algorithm = algorithm)
-
+X = matrix(X[[1]], ncol = q); X
+head(X)
+dim(X)
+# fit model without harmonic trend 
+st = Sys.time()
+fit1nox <- miHMM(niter=niter, nburn=nburn, y=y, ycomplete=ycomplete,
+        priors=priors, z.true=z.true,
+        mu.true=mu.true, missing = missing)
 en = Sys.time()
 en - st
 
@@ -203,12 +191,8 @@ df <- data.frame(ham.bc, ham, mu.mse)
 rownames(df) <- c("cyclical-PSBP-iHMM", "PSBP-iHMM")
 
 #df
-# cat results/markovSimShared*.csv > combined_results/ccrShared.txt
-write.table(df, file = paste0("/projects/lvheck@colostate.edu/markovPSBP/simulations/results/markovSimShared", simnum, ".csv"), 
+# cat results/completeShared.csv > combined_results/completeSharedResults.txt
+write.table(df, file = paste0("/projects/lvheck@colostate.edu/psbpHMM/simulations/results/completeShared", simnum, ".csv"), 
             row.names = TRUE, col.names = FALSE, sep = ",")
-
-
-
-
 
 

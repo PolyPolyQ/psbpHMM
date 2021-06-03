@@ -4,7 +4,6 @@
 #' @param z2 vector of estimated states 
 #'
 #' @return hamming distance for most overlap
-#' @export
 #'
 
 

@@ -2,7 +2,6 @@
 #'
 #' @param x vector of log-likelihoods 
 #'
-#' @export
 #' @return log of the sum of the exponentiated log-likelihoods
 
 logsum <- function(x) {
