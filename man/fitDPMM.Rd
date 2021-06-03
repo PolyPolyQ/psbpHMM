@@ -2,7 +2,7 @@
 % Please edit documentation in R/fitDPMM.R
 \name{fitDPMM}
 \alias{fitDPMM}
-\title{Fit DPMM with stick breaking process}
+\title{Fit truncated joint DPMM to multiple time series}
 \usage{
 fitDPMM(
   niter,
@@ -24,41 +24,59 @@ fitDPMM(
 )
 }
 \arguments{
-\item{niter}{number of iterations}
+\item{niter}{number of total iterations}
 
-\item{nburn}{burn-in}
+\item{nburn}{number of burn-in iterations}
 
-\item{y}{list of time data for each time series}
+\item{y}{list of time series data for each time series}
 
-\item{ycomplete}{complete data for evaluating imputation}
+\item{ycomplete}{complete data, if available, for evaluating imputations}
 
 \item{priors}{list of priors}
 
-\item{K.start}{starting value number of states}
+\item{K.start}{maximum allowable number of states}
 
-\item{z.true}{list of true hidden states for error measure}
+\item{z.true}{list of true hidden states, if known}
 
-\item{lod}{vector of lower limits of detection for p exposures}
+\item{lod}{list of lower limits of detection for p exposures for each time series}
 
-\item{mu.true}{matrix of true exposure means for each true state}
+\item{mu.true}{matrix of true exposure means for each true state, if known}
 
 \item{missing}{logical; if TRUE then the data set contains missing data, default is FALSE}
 
-\item{tau2}{tuning parameter for MH algorithm for reparameterized Sigma}
+\item{tau2}{variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma}
 
-\item{a.tune}{tuning parameter for MH algorithm for reparameterized Sigma}
+\item{a.tune}{shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma}
 
-\item{b.tune}{tuning parameter for MH algorithm for reparameterized Sigma}
+\item{b.tune}{rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma}
 
-\item{resK}{logical; resolvent kernel for MH update a}
+\item{resK}{logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma}
 
-\item{eta.star}{reslvent kernel parameter for MH update a}
+\item{eta.star}{resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.}
 
-\item{len.imp}{number of imputations to save}
+\item{len.imp}{number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter.}
 }
 \value{
-list of results
+an object of type "dpmm"
+
+a list with components
+\itemize{
+       \item z.save: list of estimated hidden states for each time series at each iteration
+       \item K.save: list of estimated number of hidden states for each time series at each iteration
+       \item ymar: matrix of imputed values for MAR data, number of rows equal to len.imp
+       \item ylod: matrix of imputed values for data below LOD, number of rows equal to len.imp
+       \item hamming: posterior hamming distance between true and estimated states, if z.true is given
+       \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
+       \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
+       \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
+       \item mar.bias: mean bias of MAR imputations, if ycomplete is given
+       \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
+       \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
+       \item ycomplete: complete data
+       \item MH.arate: average MH acceptance rate for lower triangular elements
+       \item MH.lamrate: average MH acceptance rate for diagonal elements 
+}
 }
 \description{
-Fit DPMM with stick breaking process
+Fit truncated joint DPMM to multiple time series
 }

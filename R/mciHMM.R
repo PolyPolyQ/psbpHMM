@@ -1,4 +1,6 @@
-#' Fit mc-iHMM with X defined (covariates, harmonic trend) with or without repeated measures
+#' Fit covariate-dependent PSBP-iHMM to multiple time series 
+#' 
+#' This is the description 
 #'
 #' @param niter number of total iterations
 #' @param nburn number of burn-in iterations

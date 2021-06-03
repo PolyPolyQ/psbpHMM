@@ -2,7 +2,7 @@
 % Please edit documentation in R/mciHMM.R
 \name{mciHMM}
 \alias{mciHMM}
-\title{Fit mc-iHMM with X defined (covariates, harmonic trend) with or without repeated measures}
+\title{Fit covariate-dependent PSBP-iHMM to multiple time series}
 \usage{
 mciHMM(
   niter,
@@ -22,49 +22,78 @@ mciHMM(
   b.tune = NULL,
   resK = FALSE,
   eta.star = NULL,
-  len.imp = NULL
+  len.imp = NULL,
+  holdout = NULL
 )
 }
 \arguments{
-\item{niter}{number of iterations}
+\item{niter}{number of total iterations}
 
-\item{nburn}{burn-in}
+\item{nburn}{number of burn-in iterations}
 
-\item{y}{list of time data for each time series}
+\item{y}{list of time series data for each time series}
 
-\item{rmlist}{vector identifying repeated measures}
+\item{rmlist}{integer vector identifying repeated time series for the same subject with the same number (e.g. c(1,1,2,2,2,3,3))}
 
-\item{ycomplete}{complete data for evaluating imputation}
+\item{ycomplete}{complete data, if available, for evaluating imputations}
 
-\item{X}{list of design matrix for each i}
+\item{X}{list, matrix of covariates for each time series}
 
 \item{priors}{list of priors}
 
-\item{K.start}{starting value number of states}
+\item{K.start}{starting number of states}
 
-\item{z.true}{list of true hidden states for error measure}
+\item{z.true}{list of true hidden states, if known}
 
-\item{lod}{vector of lower limits of detection for p exposures}
+\item{lod}{list of lower limits of detection for p exposures for each time series}
 
-\item{mu.true}{matrix of true exposure means for each true state}
+\item{mu.true}{matrix of true exposure means for each true state, if known}
 
 \item{missing}{logical; if TRUE then the data set y contains missing data, default is FALSE}
 
-\item{tau2}{tuning parameter for MH update for a}
+\item{tau2}{variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma}
 
-\item{a.tune}{tuning parameter for MH udpate for lams}
+\item{a.tune}{shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma}
 
-\item{b.tune}{tuning parameter for MH update for lams}
+\item{b.tune}{rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma}
 
-\item{resK}{logical; resolvent kernel for MH update a}
+\item{resK}{logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma}
 
-\item{eta.star}{reslvent kernel parameter for MH update a}
+\item{eta.star}{resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.}
 
-\item{len.imp}{number of imputations to save}
+\item{len.imp}{number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter.}
+
+\item{holdout}{list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes}
 }
 \value{
-list of results
+an object of type "iHMM"
+
+a list with components
+\itemize{
+       \item z.save: list of estimated hidden states for each time series at each iteration
+       \item K.save: list of estimated number of hidden states for each time series at each iteration
+       \item ymar: matrix of imputed values for MAR data, number of rows equal to len.imp
+       \item ylod: matrix of imputed values for data below LOD, number of rows equal to len.imp
+       \item beta.save: list of posterior estimates of beta_k, state-specific regression coefficients in PSBP 
+       \item beta_rm.save: list of posterior estimates of beta_sk, state-specific subject-specific regression coefficients in PSBP
+       \item mu.save: list of posterior estimates of mu_k, state-specific means 
+       \item hamming: posterior hamming distance between true and estimated states, if z.true is given
+       \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
+       \item mu.sse: sum of squared errors for estimated state-specific means, if mu.true is given
+       \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
+       \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
+       \item mar.sse: sum of squared errors of MAR imputations, if ycomplete is given 
+       \item lod.sse: sum of squared errors of imputations below LOD, if ycomplete is given 
+       \item mar.bias: mean bias of MAR imputations, if ycomplete is given
+       \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
+       \item mar.sum.bias: sum of bias of MAR imputations, if ycomplete is given
+       \item lod.sum.bias: sum of bias of imputations below LOD, if ycomplete is given
+       \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
+       \item ycomplete: complete data
+       \item MH.arate: average MH acceptance rate for lower triangular elements
+       \item MH.lamrate: average MH acceptance rate for diagonal elements 
+}
 }
 \description{
-Fit mc-iHMM with X defined (covariates, harmonic trend) with or without repeated measures
+This is the description
 }

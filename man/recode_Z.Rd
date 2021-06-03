@@ -10,7 +10,7 @@ recode_Z(z)
 \item{z}{list of states}
 }
 \value{
-recoded z
+list of categorical indicators re-labeled from 1 to the number of unique clusters
 }
 \description{
 Relabel z to 1:length(z) while retaining order of z

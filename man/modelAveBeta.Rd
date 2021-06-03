@@ -2,7 +2,7 @@
 % Please edit documentation in R/modelAveBeta.R
 \name{modelAveBeta}
 \alias{modelAveBeta}
-\title{calculate model averaged estimates of harmonic trend (X beta)}
+\title{calculate model averaged estimates of harmonic trend (X %*% beta)}
 \usage{
 modelAveBeta(fit, zbest1, X)
 }
@@ -14,8 +14,8 @@ modelAveBeta(fit, zbest1, X)
 \item{X}{covariates}
 }
 \value{
-model averaged betas
+model averaged estimates of X %*% beta, state-specific covariate effect
 }
 \description{
-calculate model averaged estimates of harmonic trend (X beta)
+calculate model averaged estimates of harmonic trend (X %*% beta)
 }

@@ -1,4 +1,4 @@
-#' Fit m-iHMM with no X 
+#' Fit PSBP-iHMM without covariates to multiple time series
 #' 
 #' @param niter number of total iterations
 #' @param nburn number of burn-in iterations

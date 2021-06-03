@@ -12,7 +12,7 @@ modelAveMu(fit, zbest1)
 \item{zbest1}{results from best}
 }
 \value{
-model averaged estimates of mu
+model averaged estimates of mu, state-specific means
 }
 \description{
 calculate model averaged estimates of mu
