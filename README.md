@@ -11,7 +11,6 @@ Rcpp
 RcppArmadillo  
 mvtnorm 
 truncnorm
-stats
 tmvtnorm
 parallel
 tmvmixnorm
