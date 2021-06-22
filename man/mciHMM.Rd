@@ -95,5 +95,5 @@ a list with components
 }
 }
 \description{
-This is the description
+Fit covariate-dependent PSBP-iHMM to multiple time series
 }

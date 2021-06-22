@@ -1,6 +1,6 @@
 #' Fit covariate-dependent PSBP-iHMM to multiple time series 
 #' 
-#' This is the description 
+#' 
 #'
 #' @param niter number of total iterations
 #' @param nburn number of burn-in iterations

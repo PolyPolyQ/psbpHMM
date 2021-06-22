@@ -1,0 +1,17 @@
+base
+Rcpp
+RcppArmadillo
+mvtnorm
+truncnorm
+Matrix
+sandwich
+gmm
+tmvtnorm
+tmvmixnorm
+matrixcalc
+mvnfast
+gdata
+invgamma
+salso
+psbpHMM
+gtools

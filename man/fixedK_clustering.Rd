@@ -2,7 +2,7 @@
 % Please edit documentation in R/fixedK_clustering.R
 \name{fixedK_clustering}
 \alias{fixedK_clustering}
-\title{MVN model based clustering with fixed K and fixed state assignments}
+\title{MVN model based clustering}
 \usage{
 fixedK_clustering(
   niter,
@@ -25,43 +25,43 @@ fixedK_clustering(
 )
 }
 \arguments{
-\item{niter}{number of iterations}
+\item{niter}{number of total iterations}
 
-\item{nburn}{burn-in}
+\item{nburn}{number of burn-in iterations}
 
-\item{y}{data}
+\item{y}{list of time series data for each time series}
 
-\item{ycomplete}{complete data for validation}
+\item{ycomplete}{complete data, if available, for evaluating imputations}
 
-\item{priors}{priors}
+\item{priors}{list of priors}
 
-\item{K.true}{set number of hidden states}
+\item{K.true}{specified number of hidden states}
 
-\item{z.true}{set hidden state trajectories}
+\item{z.true}{specified hidden state trajectories}
 
 \item{lod}{limit of detection}
 
 \item{missing}{indicator if there is missing data}
 
-\item{gibbs_update}{indicator for gibbs sampling of Sigma or MH}
+\item{gibbs_update}{logical; if TRUE implement Gibbs sampling of state-specific covariance matrices, otherwise, implement MH updates of reparameterized Sigma}
 
-\item{tau2}{tuning param}
+\item{tau2}{variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma}
 
-\item{a.tune}{tuning param}
+\item{a.tune}{shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma}
 
-\item{b.tune}{tuning param}
+\item{b.tune}{rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma}
 
-\item{resK}{tuning param}
+\item{resK}{logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma}
 
-\item{eta.star}{tuning param}
+\item{eta.star}{resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.}
 
-\item{len.imp}{number of imputations to save}
+\item{len.imp}{number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter.}
 
-\item{holdout}{holdout data set for validation}
+\item{holdout}{list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes}
 }
 \value{
 list
 }
 \description{
-MVN model based clustering with fixed K and fixed state assignments
+Function to fit MVN models to data sub-setted by known states
 }

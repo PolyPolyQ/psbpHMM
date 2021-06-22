@@ -20,6 +20,7 @@ mvnfast
 gdata
 invgamma
 salso
+gtools
 
 Then you can install psbpHMM by running the following lines in the R console: 
 

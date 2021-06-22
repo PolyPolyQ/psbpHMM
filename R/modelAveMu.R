@@ -18,9 +18,7 @@ modelAveMu <- function(fit, zbest1, ymatrix){
   mu_lwr <- list()
   exp_lwr <- list()
   exp_upr <- list()
-  
 
-  
   for(k in 1:K){
     whoBest <- which(unlist(zbest1)==k) # the time points assigned to k in the best clustering 
     

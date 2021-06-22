@@ -1,22 +1,25 @@
-#' MVN model based clustering with fixed K and fixed state assignments
+#' MVN model based clustering 
 #'
-#' @param niter number of iterations
-#' @param nburn burn-in
-#' @param y data
-#' @param ycomplete complete data for validation
-#' @param priors priors
-#' @param K.true set number of hidden states
-#' @param z.true set hidden state trajectories
+#' Function to fit MVN models to data sub-setted by known states 
+#'
+#' @param niter number of total iterations
+#' @param nburn number of burn-in iterations
+#' @param y list of time series data for each time series 
+#' @param ycomplete complete data, if available, for evaluating imputations
+#' @param priors list of priors
+#' @param K.true specified number of hidden states
+#' @param z.true specified hidden state trajectories
 #' @param lod limit of detection
 #' @param missing indicator if there is missing data
-#' @param gibbs_update indicator for gibbs sampling of Sigma or MH
-#' @param tau2 tuning param
-#' @param a.tune tuning param 
-#' @param b.tune tuning param
-#' @param resK tuning param
-#' @param eta.star tuning param
-#' @param len.imp number of imputations to save
-#' @param holdout holdout data set for validation
+#' @param gibbs_update logical; if TRUE implement Gibbs sampling of state-specific covariance matrices, otherwise, implement MH updates of reparameterized Sigma 
+#' @param tau2 variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma
+#' @param a.tune shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
+#' @param b.tune rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
+#' @param resK logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma
+#' @param eta.star resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.
+#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
+#' @param holdout list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes
+#'
 #'
 #' @return list
 #' @export
