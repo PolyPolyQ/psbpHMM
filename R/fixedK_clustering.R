@@ -1,78 +1,48 @@
-#' Fit truncated joint DPMM to multiple time series 
+#' MVN model based clustering with fixed K and fixed state assignments
 #'
-#' @param niter number of total iterations
-#' @param nburn number of burn-in iterations
-#' @param y list of time series data for each time series 
-#' @param ycomplete complete data, if available, for evaluating imputations
-#' @param priors list of priors
-#' @param K.start maximum allowable number of states
-#' @param z.true list of true hidden states, if known
-#' @param lod list of lower limits of detection for p exposures for each time series
-#' @param mu.true matrix of true exposure means for each true state, if known 
-#' @param missing logical; if TRUE then the data set contains missing data, default is FALSE
-#' @param tau2 variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma
-#' @param a.tune shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
-#' @param b.tune rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
-#' @param resK logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma
-#' @param eta.star resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.
-#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
-#' @param holdout list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes
+#' @param niter number of iterations
+#' @param nburn burn-in
+#' @param y data
+#' @param ycomplete complete data for validation
+#' @param priors priors
+#' @param K.true set number of hidden states
+#' @param z.true set hidden state trajectories
+#' @param lod limit of detection
+#' @param missing indicator if there is missing data
+#' @param gibbs_update indicator for gibbs sampling of Sigma or MH
+#' @param tau2 tuning param
+#' @param a.tune tuning param 
+#' @param b.tune tuning param
+#' @param resK tuning param
+#' @param eta.star tuning param
+#' @param len.imp number of imputations to save
+#' @param holdout holdout data set for validation
 #'
-#' @importFrom parallel mclapply
-#' @importFrom stats rnorm runif rgamma rWishart cov cov2cor dnorm rgeom rbeta 
-#' @importFrom mvtnorm dmvnorm rmvnorm
-#' @importFrom tmvmixnorm rtmvn
-#' @importFrom matrixcalc matrix.trace
-#' @importFrom mvnfast rmvn dmvn
-#' @importFrom invgamma dinvgamma
-#' @importFrom gdata lowerTriangle<-
-#'
-#' @return an object of type "dpmm"
-#'
-#' @return a list with components
-#' \itemize{
-#'        \item z.save: list of estimated hidden states for each time series at each iteration
-#'        \item K.save: list of estimated number of hidden states for each time series at each iteration
-#'        \item ymar: matrix of imputed values for MAR data, number of rows equal to len.imp
-#'        \item ylod: matrix of imputed values for data below LOD, number of rows equal to len.imp
-#'        \item hamming: posterior hamming distance between true and estimated states, if z.true is given
-#'        \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
-#'        \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
-#'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
-#'        \item mar.bias: mean bias of MAR imputations, if ycomplete is given
-#'        \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
-#'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
-#'        \item ycomplete: complete data
-#'        \item MH.arate: average MH acceptance rate for lower triangular elements
-#'        \item MH.lamrate: average MH acceptance rate for diagonal elements 
-#' }
+#' @return list
 #' @export
+#'
 
-fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
-                          priors=NULL, K.start=NULL, z.true=NULL, lod=NULL,
-                          mu.true=NULL, missing = FALSE, 
-                          tau2 = NULL, a.tune = NULL, b.tune = NULL,
-                          resK = FALSE, eta.star = NULL, len.imp = NULL,
-                          holdout = NULL){
-  
-
-  # the only prior option here is the jointNIW 
+fixedK_clustering <- function(niter, nburn, y, ycomplete=NULL,
+                    priors=NULL, K.true, z.true, lod=NULL,
+                    missing = FALSE, 
+                    gibbs_update = TRUE, 
+                    tau2 = NULL, a.tune = NULL, b.tune = NULL,
+                    resK = FALSE, eta.star = NULL, len.imp = NULL,
+                    holdout = NULL){
   
   #####################
   ### Initial Setup ###
   #####################
   
+  SigmaPrior = "wishart"
+  # vs "non-informative" which we're not using anymore #
   
-  if(missing){
-    algorithm = "MH"
-    SigmaPrior = "wishart"
-  }else{
+  if(gibbs_update) {
     algorithm = "Gibbs"
-    #SigmaPrior = "non-informative"
-    SigmaPrior = "wishart"
+  }else{
+    algorithm = "MH"
   }
 
-  
   # how many time series and exposures 
   if(class(y)=="list"){
     p <- ncol(y[[1]]) # number of exposures 
@@ -93,7 +63,13 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     ycomplete <- list(matrix(ycomplete, ncol= 1))
     z.true <- list(z.true)
   }
-
+  
+  ############################
+  ### Specify fixed values ###
+  ############################
+  
+  z = z.true
+  K = K.true
   
   ##############
   ### Priors ###
@@ -109,7 +85,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     nu.df <- priors$nu # 
     R.mat <- priors$R 
   }else{
-    # if SigmaPrior = "ni", the half-t prior on Sigma_k
+    # if SigmaPrior = "non-informative", the half-t prior on Sigma_k
     if(is.null(priors$bj)) priors$bj <- rep(1, p) # Huang and Wand advise 10e5
     if(is.null(priors$nu)) priors$nu <- 2 # Huang and Wand advise 2, p+4 for so the variance exists
     nu.df <- priors$nu + p - 1 # Huang and Wand, prior df 
@@ -180,21 +156,6 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   ## Starting Values ##  
   #####################
   
-  if(is.null(K.start)) K = 50 else K = K.start
-    
-  ### test
-  # K.star =20
-  # 
-  # z <- lapply(1:n, FUN = function(i) {
-  #   rcat(matrix(runif(t.max*K.star),t.max,K.star)) 
-  # })# initial category assignment  
-  
-  
-  z <- lapply(1:n, FUN = function(i) {
-    rcat(matrix(runif(t.max*K),t.max,K))
-  })# initial category assignment
-  
-  
   mu <- list()
   Sigma <- list()
   D <- list()
@@ -208,7 +169,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   }
   
   for(k in 1:K){
-    if(missing){
+    if(algorithm == "MH"){
       # we reparameterize Sigma and model L and D instead 
       vj0 <- sapply(1:p, FUN = function(j) priors$nu + j - p); vj0 # fixed for each k 
       deltaj0 <- rep(1,p); deltaj0 # fixed for each k 
@@ -229,40 +190,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
       mu[[k]] <- rmvn(1, priors$mu0, (1/priors$lambda)*Sigma[[k]])
     }
   }
-
-  ##################################
-  ### for stick-breaking process ###
-  ##################################
   
-  alpha <- 1 # DP parameter
-  psi <- rep(1/K, K) # cluster weights
-  V <- rbeta(K, 1, alpha) # conditional weights
-  V[K] <- 1 # apply DP truncation to C classes
-  
-  loglik <- list() # log-likelihood of being in each cluster
-  for(i in 1:n){
-    loglik[[i]] <- matrix(NA, t.max, K)
-  }
-
-  nc <- unlist(lapply(1:K, FUN = function(k)  length(which(unlist(z) == k))))
-  
-  
-  ################################################
-  ### fixed values for new state probabilities ###
-  ################################################
-  
-  gampp <- mgamma(nu = nu.df, p = p)
-  # fixed for "wishart", starting value for "non-informative" because R.mat will change with each iteration as aj.inv changes
-  # if "ni" then need to update detR.star and log.stuff each iteration
-  detR.star <- mclapply(1:n, FUN = function(i){
-    sapply(1:t.max, FUN = function(t){
-      x <- R.mat + priors$lambda*tcrossprod(priors$mu0) + tcrossprod(y[[i]][t,]) - 
-        (1/(1+priors$lambda))*tcrossprod(priors$lambda*priors$mu0+y[[i]][t,])
-      return(det(x))})
-  })
-  log.stuff <- (p/2)*log(priors$lambda/(pi*(priors$lambda+1)))+log(gampp)+(nu.df/2)*log(det(R.mat)); log.stuff
-  
-
   ########################
   ### For MH algorithm ###
   ########################
@@ -279,12 +207,6 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   ##############################
   
   z.save <- list()
-  mu.save <- list()
-  beta.save <- list()
-  K.save <- numeric()
-  ham <- numeric()
-  mu.mse <- numeric()
-  mu.sse <- numeric()
   MH.a <- 0 # for MH update a
   MH.lam <- 0 # for MH update lams
   s.save = 1
@@ -296,13 +218,6 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
     mar.mse <- numeric()
     lod.mse <- numeric()
-    mar.sse <- numeric()
-    lod.sse <- numeric()
-    miss.mse <- numeric()
-    mar.bias <- numeric()
-    lod.bias <- numeric()
-    mar.sum.bias <- numeric()
-    lod.sum.bias <- numeric()
     s.imp <- 1
   }else{
     imputes = 0
@@ -310,13 +225,6 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- NULL
     mar.mse <- NULL
     lod.mse <- NULL
-    mar.sse <- NULL
-    lod.sse <- NULL
-    miss.mse <- NULL
-    mar.bias <- NULL
-    lod.bias <- NULL
-    mar.sum.bias <- NULL
-    lod.sum.bias <- NULL
     s.imp <- NULL
   }
   
@@ -324,58 +232,25 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   ###############
   ### Sampler ###
   ###############
-
+  
   for(s in 1:niter){
     
     #####################
     ### initial stuff ### 
     #####################
-    K_unique = length(unique(unlist(z)))
-    if(s %% 1== 0) print(paste("iteration", s, "number of clusters =", K_unique))
+    # K_unique = length(unique(unlist(z)))
+    # print(paste("iteration", s, "number of clusters =", K_unique))
+    # 
+    # par(mfrow = c(2,2))
+    # plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
+    # abline(h = lod[[1]][1])
+    # plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z.true[[1]])
+    # abline(h = lod[[1]][1])
+    # plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
+    # abline(h = lod[[2]][1])
+    # plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z.true[[2]])
+    # abline(h = lod[[2]][1])
     
-    par(mfrow = c(2,2))
-    plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    abline(h = lod[[1]][1])
-    plot(1:t.max, y[[1]][,2], type = "p", pch = 19, col = z[[1]])
-    abline(h = lod[[1]][2])
-    plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    abline(h = lod[[2]][1])
-    plot(1:t.max, y[[2]][,3], type = "p", pch = 19, col = z[[2]])
-    abline(h = lod[[2]][3])
-    
-
-    ##################################
-    ### update cluster assignments ###
-    ##################################
-    
-    for(i in 1:n){
-      for(k in 1:K){
-        loglik[[i]][,k] <- log(psi[k]) +
-          dmvnorm(y[[i]], mu[[k]], Sigma[[k]], log = T)
-      }
-      # calculate likelihood
-      lik_k <- exp(loglik[[i]] - apply(loglik[[i]], 1, logsum))
-      z[[i]] <- rcat(lik_k) 
-    }
-    
-    nc <- unlist(lapply(1:K, FUN = function(k)  length(which(unlist(z) == k))))
-    
-    ##############################
-    ### update cluster weights ###
-    ##############################
-    
-    # update conditional weights for stick-breaking process
-    for (k in 1:(K-1)) V[k] <- rbeta(1, nc[k] + 1, alpha + sum(nc[(k+1):K]))
-    
-    # handle overflow
-    V[which(V == 1)] <- 1-10e-8
-    V[K] <- 1
-    
-    # update mixing weights 
-    psi[1] <- V[1]
-    cumV <- cumprod(1-V)
-    for (k in 2:K) psi[k] <- V[k]*cumV[k-1]
-  
     ######################
     ### update theta_k ### 
     ######################
@@ -606,50 +481,21 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
             mu.mgo <- as.numeric(mu.miss + Sigma.mis.obs.inv%*%(y.obs - mu.obs))
             Sigma.mgo <- Sigma.miss + Sigma.mis.obs.inv%*%Sigma.obs.miss
             
-            # before, used int = y[[i]][t, whichlod], trying new thing June 30 2020
             y[[i]][t,whichlod] <- rtmvn(1, Mean = mu.mgo, Sigma = Sigma.mgo, lower = rep(-Inf, length(whichlod)),
                                         upper = lod[[i]][whichlod], int = y[[i]][t, whichlod], burn = 10, thin = 1)
             
-            # tryCatch({
-            #   y[[i]][t,whichlod] <- rtmvn(1, Mean = mu.mgo, Sigma = Sigma.mgo, lower = rep(-Inf, length(whichlod)),
-            #                               upper = lod[whichlod], int = lod[whichlod]-1, burn = 10, thin = 1) }, 
-            #   error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
-            
-            
+
           }
         }
       }
     }
-
+    
     
     #####################
     ### Store Results ###
     #####################
     
     if(s>=nburn){
-      
-      ## Hamming distance ##
-      if(!is.null(unlist(z.true))){
-        ham.error <- hamdist(unlist(z.true), unlist(z)) 
-        ham[s.save] <- ham.error/(n*t.max) # proportion of misplaced states
-      }else{
-        ham <- NULL
-      }    
-      
-      ## MSE for mu ##
-      if(!is.null(mu.true)){
-        sse <- list()
-        for(i in 1:n){
-          sse[[i]] <- sapply(1:t.max, FUN = function(t){
-            as.numeric(crossprod(unlist(mu[z[[i]][t]]) - mu.true[z.true[[i]][t],]))
-          })
-        }
-        mu.mse[s.save] <- mean(unlist(sse))/p # vector mse for mu, divide by # exposures 
-      }else{
-        mu.mse <- NULL
-      }
-      z.save[[s.save]] <- z
-      K.save[s.save] <- K 
       
       if(s%in%imputes){
         # imputed values for complete data sets 
@@ -661,9 +507,6 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
           mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(holdout)==1)] - unlist(y)[which(unlist(holdout)==1)])^2)
           lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(holdout)==2)] - unlist(y)[which(unlist(holdout)==2)])^2)
 
-          # mean bias
-          mar.bias[s.imp] <- mean((unlist(y)[which(unlist(holdout)==1)] - unlist(ycomplete)[which(unlist(holdout)==1)]))
-          lod.bias[s.imp] <- mean((unlist(y)[which(unlist(holdout)==2)] - unlist(ycomplete)[which(unlist(holdout)==2)]))
         }
         s.imp <- s.imp+1
       }
@@ -672,15 +515,14 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   }
   
   
-  list1 <- list(z.save = z.save, K.save = K.save,
-                ymar = y.mar.save, ylod = y.lod.save,
-                hamming = ham, mu.mse = mu.mse, mar.mse = mar.mse, 
-                lod.mse = lod.mse, mar.bias = mar.bias, lod.bias = lod.bias,
+  list1 <- list(ymar = y.mar.save, ylod = y.lod.save,
+                mar.mse = mar.mse, 
+                lod.mse = lod.mse, 
                 mismat = mismat, ycomplete = ycomplete,
-                MH.arate = MH.a/(length(al)*sum(K.save)),
-                MH.lamrate = MH.lam/(p*sum(K.save)))
+                MH.arate = MH.a/(length(al)*sum(K.true)),
+                MH.lamrate = MH.lam/(p*sum(K.true)))
   
-  class(list1) <- "dpmm"
+  class(list1) <- "fixedKmixture"
   return(list1)
   
   

@@ -4,7 +4,7 @@
 \alias{modelAveMu}
 \title{calculate model averaged estimates of mu}
 \usage{
-modelAveMu(fit, zbest1)
+modelAveMu(fit, zbest1, ymatrix)
 }
 \arguments{
 \item{fit}{object of type "ihmm"}

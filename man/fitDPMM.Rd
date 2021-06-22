@@ -20,7 +20,8 @@ fitDPMM(
   b.tune = NULL,
   resK = FALSE,
   eta.star = NULL,
-  len.imp = NULL
+  len.imp = NULL,
+  holdout = NULL
 )
 }
 \arguments{
@@ -55,6 +56,8 @@ fitDPMM(
 \item{eta.star}{resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.}
 
 \item{len.imp}{number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter.}
+
+\item{holdout}{list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes}
 }
 \value{
 an object of type "dpmm"
