@@ -265,7 +265,7 @@ fixedK_clustering <- function(niter, nburn, y, ycomplete=NULL,
       itimes <- lapply(1:n, FUN = function(i)  which(z[[i]] == k))
       if(sum(unlist(itimes)) == 0){
         # update from prior 
-        if(missing){
+        if(algorithm == "MH"){
           # MH sample from prior 
           vj0 <- sapply(1:p, FUN = function(j) priors$nu + j - p); vj0 # fixed for each k 
           deltaj0 <- rep(1,p); deltaj0 # fixed for each k 

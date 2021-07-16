@@ -398,17 +398,17 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   #start.time = Sys.time()
   for(s in 1:niter){
     
-    #print(paste("Sigma:", round(max(unlist(Sigma)),2)))
-    # print(paste("mu:", round(max(abs(unlist(mu))),2)))
-    # par(mfrow = c(1,2))
-    # plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    # abline(h = lod[[1]][1])
-    # plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z.true[[1]])
-    # abline(h = lod[[1]][1])
-    # plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    # abline(h = lod[[2]][1])
-    # plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z.true[[2]])
-    # abline(h = lod[[2]][1])
+    print(paste("Sigma:", round(max(unlist(Sigma)),2)))
+    print(paste("mu:", round(max(abs(unlist(mu))),2)))
+    par(mfrow = c(1,2))
+    plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
+    abline(h = lod[[1]][1])
+    plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z[[1]])
+    abline(h = lod[[1]][1])
+    plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
+    abline(h = lod[[2]][1])
+    plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z[[2]])
+    abline(h = lod[[2]][1])
     
     #####################
     ### initial stuff ### ### done 
@@ -874,9 +874,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     ############################################
     ### update beta.sk for repeated measures ###
     ############################################
-  
-    ## this is a little slow 
-    
+
     if(!is.null(rmlist)){
       beta.ik = list()
       for(i.sub in 1:n.sub){
@@ -913,9 +911,9 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
             }
             alpha.k <- unlist(alpha.k)
 
-            # update beta.k
-            V.k <- chol2inv(chol(priors$SigInv.betaS + crossprod(X.k, X.k)))
-            m.k <- crossprod(V.k,crossprod(priors$SigInv.betaS,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
+            # update beta.ik
+            V.k <- chol2inv(chol(kap2inv*priors$SigInv.betaS + crossprod(X.k, X.k)))
+            m.k <- crossprod(V.k,crossprod( (kap2inv*priors$SigInv.betaS) ,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
             return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
           }else{ 
             # update from prior
