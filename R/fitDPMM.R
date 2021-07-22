@@ -327,23 +327,6 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
 
   for(s in 1:niter){
     
-    #####################
-    ### initial stuff ### 
-    #####################
-    K_unique = length(unique(unlist(z)))
-    if(s %% 1== 0) print(paste("iteration", s, "number of clusters =", K_unique))
-    
-    par(mfrow = c(2,2))
-    plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    abline(h = lod[[1]][1])
-    plot(1:t.max, y[[1]][,2], type = "p", pch = 19, col = z[[1]])
-    abline(h = lod[[1]][2])
-    plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    abline(h = lod[[2]][1])
-    plot(1:t.max, y[[2]][,3], type = "p", pch = 19, col = z[[2]])
-    abline(h = lod[[2]][3])
-    
-
     ##################################
     ### update cluster assignments ###
     ##################################

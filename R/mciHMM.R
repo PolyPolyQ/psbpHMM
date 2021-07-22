@@ -384,24 +384,8 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   #start.time = Sys.time()
   for(s in 1:niter){
     
-    # print(paste("Sigma:", round(max(unlist(Sigma)),2)))
-    # print(paste("mu:", round(max(abs(unlist(mu))),2)))
-    # par(mfrow = c(1,2))
-    # plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    # abline(h = lod[[1]][1])
-    # plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    # abline(h = lod[[1]][1])
-    # plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    # abline(h = lod[[2]][1])
-    # plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    # abline(h = lod[[2]][1])
-    # 
-    #####################
-    ### initial stuff ### ### done 
-    #####################
-    
-    if (s%%100==0) print(paste("iteration", s, " number of states =", K))
-    #start.time1 <- Sys.time()
+    #if (s%%100==0) print(paste("iteration", s, " number of states =", K))
+
     z.prev <- list()
     z.prev <- mclapply(1:n, FUN=function(i) return(z[[i]]))
     

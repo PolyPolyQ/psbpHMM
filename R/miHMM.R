@@ -353,8 +353,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   
   for(s in 1:niter){
   
-    
-    if (s%%100==0) print(paste("iteration", s, " number of states =", K))
+    #if (s%%100==0) print(paste("iteration", s, " number of states =", K))
     
     z.prev <- list()
     z.prev <- mclapply(1:n, FUN=function(i) return(z[[i]]))
