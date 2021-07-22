@@ -7,7 +7,7 @@
 wMinusb(i, t, k, w.z, beta.k, beta.sk = NULL, X)
 }
 \arguments{
-\item{i}{time series}
+\item{i}{individual}
 
 \item{t}{time point}
 
@@ -22,7 +22,7 @@ wMinusb(i, t, k, w.z, beta.k, beta.sk = NULL, X)
 \item{X}{covariates}
 }
 \value{
-w minus X%*%beta
+w minus covariate effects
 }
 \description{
 Calculate W minus Xbeta

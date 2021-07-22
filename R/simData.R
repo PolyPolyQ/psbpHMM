@@ -1,17 +1,13 @@
-#' Simulate data for psbpHMM package 
+#' Simulate data to fit methods in the R package `psbpHMM' 
 #'
-#' Simulate multiple time series data from a fixed-state MVN hidden markov model ∂
+#' Simulate multiple time series data from a fixed-state MVN hidden Markov model 
 #'
 #' @param n number of time series
 #' @param t.max length of each time series
 #' @param K number of clusters to be shared across all time series 
 #' @param p number of exposures 
-#' @param tempTrend logical; if true, all time series have a common temporal trend
-#' @param lodRemove logical; if true, remove data emulating observations below the limit of detection
-#' @param marRemove logical; if true, remove data emulating observations missing at random 
-#' @param lodmis percent of data to remove as below limit of detection 
-#' @param marmis percent of data to remove as missing at random 
-#' @param sf parameter controlling level of variation in state-specific covariance matrices
+#' @param trend "shared" (default) for shared temporal trends or "distinct" for distinct temporal trends among n time series
+#' @param missingLevel missing data level, data will be removed and split between missing at random and below LOD
 #'
 #' @return a list with components
 #' \itemize{
@@ -20,61 +16,53 @@
 #'     \item z.true: true hidden state trajectories for each time series
 #'     \item K: true number of hiddens states
 #'     \item mu.true: scaled true state-specific means
-#'     \item Sigma.true: unscaled true state-specific covariance matrices
 #'     \item lod: limit of detection
 #' }     
 #' @export
 #'
-#' @examples
-simdat <- function(n, t.max=24, K = 6, p = 3, tempTrend = TRUE, lodRemove = FALSE, marRemove = FALSE,
-                         lodmis = 0, marmis = 0, sf = 0.1){
+
+simData <- function(n, t.max=24, K = 6, p = 3, 
+                   trend = "shared", missingLevel = 0.5){
   
-  #K <- 6
-  if(tempTrend){
-    z.true <- list()
-    for(i in 1:n){
-      probs <- rdirichlet(1, rep(10, K));probs # different for each person, but from same dist and same order
-      nums <- rmultinom(1, t.max, prob = probs); nums; sum(nums)
-      num1 <- nums[1]; num1
-      numFirsthalf <- floor(nums[1]/2); numFirsthalf
-      numSecondhalf <- num1 - numFirsthalf; numSecondhalf
-      nums[1] <- numFirsthalf; nums
-      nums <- c(nums, numSecondhalf); nums; sum(nums)
-      states <- c(1:K, 1)
-      z <- unlist(lapply(1:(K+1), FUN = function(j) rep(states[j], nums[j])))
-      #idx <- sample(c(0,1,2), 1)
-      z.true[[i]] <- z 
-    }
-  }else{
-    # set states: this needs to be a temporal trend, but not shared among people 
+  if(trend == "shared"){
     z.true <- list()
     for(i in 1:n){
       probs <- rdirichlet(1, rep(10, K))
-      ord <- sample(1:K, size = K, replace = FALSE) # order
-      samps <- sample(1:K, t.max, replace = TRUE, prob = probs) # count
-      reps <- sapply(1:K, FUN = function(i) length(which(samps==i))) # num 
+      nums <- rmultinom(1, t.max, prob = probs)
+      num1 <- nums[1]
+      numFirsthalf <- floor(nums[1]/2)
+      numSecondhalf <- num1 - numFirsthalf
+      nums[1] <- numFirsthalf
+      nums <- c(nums, numSecondhalf)
+      states <- c(1:K, 1)
+      z <- unlist(lapply(1:(K+1), FUN = function(j) rep(states[j], nums[j])))
+      z.true[[i]] <- z 
+    }
+  }else{
+    z.true <- list()
+    for(i in 1:n){
+      probs <- rdirichlet(1, rep(10, K))
+      ord <- sample(1:K, size = K, replace = FALSE) 
+      samps <- sample(1:K, t.max, replace = TRUE, prob = probs) 
+      reps <- sapply(1:K, FUN = function(i) length(which(samps==i))) 
       states <- c(unlist(lapply(1:K, FUN = function(k) rep(ord[k], reps[k])))); states
       half1 <- ceiling(0.5*length(which(states==states[1])))
       z <- c(states[-(1:half1)], rep(states[1], half1))
-      #idx <- sample(c(0,1,2), 1)
       z.true[[i]] <- z 
     }
   }
-  
-  #p <- 3 # number of exposures
-  
-  # different covariances for each cluster 
+
+  # set covariances for each cluster 
   Sigma.true <- list()
-  D <- sf*diag(p)
   for(k in 1:K){
     L <- diag(p)
     lowerTriangle(L) <- rnorm(p, 0, .5) 
-    Sigma.true[[k]] <- solve(L)%*%D%*%t(solve(L))
+    Sigma.true[[k]] <- 0.1*solve(L)%*%t(solve(L))
   }
   
-  # different means for each cluster 
-  corMean <- matrix(c(1, 0.7, 0.4, 0.7, 1, -0.2, 0.4, -0.2, 1), ncol = 3); is.positive.definite(corMean)
-  mu.true <- rmvnorm(K, mean = rep(0, p), sigma = corMean); mu.true
+  # set means for each cluster 
+  corMean <- matrix(c(1, 0.7, 0.4, 0.7, 1, -0.2, 0.4, -0.2, 1), ncol = 3)
+  mu.true <- rmvnorm(K, mean = rep(0, p), sigma = corMean)
   
   y <- list()
   for(i in 1:n){
@@ -100,7 +88,6 @@ simdat <- function(n, t.max=24, K = 6, p = 3, tempTrend = TRUE, lodRemove = FALS
                       (mu.true[,2] - meanY[2])/sdY[2],
                       (mu.true[,3] - meanY[3])/sdY[3])
   
-  # i don't use sigma again so not worth scaling it 
   ys <- apply(yMat, 2, scale)
   
   # relist 
@@ -115,9 +102,12 @@ simdat <- function(n, t.max=24, K = 6, p = 3, tempTrend = TRUE, lodRemove = FALS
     ymat <- rbind(ymat, y[[i]])
   }
   
-  # chunk removal
-  if(marRemove){
-    # chunks of size 1 to 10
+  if(missingLevel < 0 | missingLevel > 1) stop("missingLevel must be between 0 and 1")
+  
+  if(missingLevel > 0){
+    # split between MAR and below LOD
+    marmis = lodmis = missingLevel/2
+    # remove MAR data 
     misnum <- ceiling(marmis*t.max*p)
     numChunks <- marmis*200; numChunks
     chunks <- rmultinom(1, size = misnum, prob = rep(1/numChunks, numChunks)) # generate size of chunks 
@@ -133,26 +123,21 @@ simdat <- function(n, t.max=24, K = 6, p = 3, tempTrend = TRUE, lodRemove = FALS
         y[[i]][,j][timePoint:(timePoint+chunks[k,]-1)] <- NA
       }
     }
-  }
-  
-  
-  if(lodRemove){
+    # remove LOD data 
     lod = list()
-    lod.old = apply(ymat, 2, FUN = function(x) quantile(x, lodmis, na.rm = TRUE))
-    
+    lod.all = apply(ymat, 2, FUN = function(x) quantile(x, lodmis, na.rm = TRUE))
     for(i in 1:n){
-      lod[[i]] = lod.old
-      #lod[[i]] = apply(y[[i]], 2, FUN = function(x) quantile(x, lodmis, na.rm = TRUE))
+      lod[[i]] = lod.all
       for(j in 1:p){
         y[[i]][which(y[[i]][,j] <= lod[[i]][j]),j] <- -Inf
       }
     }
   }else{
-    lod <- NULL
+    lod = NULL
   }
   
   list1 <- list(y = y, y.complete = y.complete,
-                z.true = z.true, K = K, mu.true = mu.true.sc, Sigma.true = Sigma.true,
+                z.true = z.true, K = K, mu.true = mu.true.sc,
                 lod = lod)
   return(list1)
 }

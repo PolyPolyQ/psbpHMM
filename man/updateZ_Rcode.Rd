@@ -2,7 +2,7 @@
 % Please edit documentation in R/updateZ_Rcode.R
 \name{updateZ_Rcode}
 \alias{updateZ_Rcode}
-\title{Update Z using R code}
+\title{Update hidden states}
 \usage{
 updateZ_Rcode(
   i,
@@ -45,5 +45,5 @@ updateZ_Rcode(
 updated states
 }
 \description{
-Update Z using R code
+Update hidden states
 }

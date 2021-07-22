@@ -66,20 +66,6 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
                         resK = FALSE, eta.star = NULL, len.imp = NULL,
                         holdout = NULL){
 
-## build package and test data analysis on this 
-## can still make some functions faster 
-## update state list   
-## update W
-## update alpha_jk
-
-####################################################################################
-### Function 1: mc-iHMM ###
-### fits the cyclical model for multple time series ###
-### allows for different X_i for each i to permit covariates or different times ###
-### all time series are the same length ### 
-### allows for repeated measures if rmlist is given ###
-####################################################################################
-
 
   ### X is a list with a matrix for each i ### 
   if(missing){
@@ -169,7 +155,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     # we model aj.inv with gamma(shape = 1/2, rate = 1/(b_j^2))
   }
   
-  if(is.null(priors$lambda)) priors$lambda <- 1 
+  if(is.null(priors$lambda)) priors$lambda <- 10 
   
   #############################
   ### Indicate Missing Type ###
@@ -363,7 +349,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   
   # missing data sets
   if(!is.null(len.imp)){
-    imputes <- ceiling(seq.int(nburn, niter, length.out = len.imp))
+    imputes <- ceiling(seq.int(nburn+1, niter, length.out = len.imp))
     y.mar.save <- matrix(NA, len.imp, length(which(unlist(mismat)==1)))
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
     mar.mse <- numeric()
@@ -398,18 +384,18 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   #start.time = Sys.time()
   for(s in 1:niter){
     
-    print(paste("Sigma:", round(max(unlist(Sigma)),2)))
-    print(paste("mu:", round(max(abs(unlist(mu))),2)))
-    par(mfrow = c(1,2))
-    plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    abline(h = lod[[1]][1])
-    plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z[[1]])
-    abline(h = lod[[1]][1])
-    plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    abline(h = lod[[2]][1])
-    plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z[[2]])
-    abline(h = lod[[2]][1])
-    
+    # print(paste("Sigma:", round(max(unlist(Sigma)),2)))
+    # print(paste("mu:", round(max(abs(unlist(mu))),2)))
+    # par(mfrow = c(1,2))
+    # plot(1:t.max, y[[1]][,1], type = "p", pch = 19, col = z[[1]])
+    # abline(h = lod[[1]][1])
+    # plot(1:t.max, ycomplete[[1]][,1], type = "p", pch = 19, col = z[[1]])
+    # abline(h = lod[[1]][1])
+    # plot(1:t.max, y[[2]][,1], type = "p", pch = 19, col = z[[2]])
+    # abline(h = lod[[2]][1])
+    # plot(1:t.max, ycomplete[[2]][,1], type = "p", pch = 19, col = z[[2]])
+    # abline(h = lod[[2]][1])
+    # 
     #####################
     ### initial stuff ### ### done 
     #####################
@@ -1014,7 +1000,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     #####################
     ### Store Results ###
     #####################
-    if(s >= nburn){
+    if(s > nburn){
       
       ## Hamming distance ##
       if(!is.null(unlist(z.true))){
@@ -1033,7 +1019,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
           })
         }
         mu.sse[s.save] <- sum(unlist(sse))
-        mu.mse[s.save] <- mean(unlist(sse)) # vector mse for mu, divide by # exposures 
+        mu.mse[s.save] <- mean(unlist(sse)) 
       }else{
         mu.sse <- NULL
         mu.mse <- NULL

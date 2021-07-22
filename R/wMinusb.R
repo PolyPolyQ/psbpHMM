@@ -1,6 +1,6 @@
 #' Calculate W minus Xbeta
 #'
-#' @param i time series
+#' @param i individual
 #' @param t time point
 #' @param k state
 #' @param w.z w
@@ -8,7 +8,7 @@
 #' @param beta.sk subject specific beta
 #' @param X covariates 
 #'
-#' @return w minus X%*%beta
+#' @return w minus covariate effects
 #'
 
 wMinusb <- function(i, t, k, w.z, beta.k, beta.sk=NULL, X){

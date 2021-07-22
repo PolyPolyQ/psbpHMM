@@ -124,7 +124,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
     nu.df <- priors$nu # 
     R.mat <- priors$R 
   }else if(SigmaPrior == "non-informative"){
-    # if SigmaPrior = "ni", the half-t prior on Sigma_k
+    # the half-t prior on Sigma_k
     if(is.null(priors$bj)) priors$bj <- rep(1, p) # Huang and Wand advise 10e5
     if(is.null(priors$nu)) priors$nu <- 2 # Huang and Wand advise 2, p+4 for so the variance exists
     nu.df <- priors$nu + p - 1 # Huang and Wand, prior df 
@@ -135,7 +135,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   }
   
   # concentration on Sigma_k for NIW 
-  if(is.null(priors$lambda)) priors$lambda <- 1 
+  if(is.null(priors$lambda)) priors$lambda <- 10 
   
   #############################
   ### Indicate Missing Type ###
@@ -317,7 +317,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   
   # missing data sets
   if(!is.null(len.imp)){
-    imputes <- ceiling(seq.int(nburn, niter, length.out = len.imp))
+    imputes <- ceiling(seq.int(nburn+1, niter, length.out = len.imp))
     y.mar.save <- matrix(NA, len.imp, length(which(unlist(mismat)==1)))
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
     mar.mse <- numeric()
@@ -784,7 +784,7 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
     #####################
     ### Store Results ###
     #####################
-    if(s >= nburn){
+    if(s > nburn){
       
       ## Hamming distance ##
       if(!is.null(unlist(z.true))){

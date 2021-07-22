@@ -1,4 +1,4 @@
-#' Update Z using R code
+#' Update hidden states
 #'
 #' @param i sampling day
 #' @param yi y
