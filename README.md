@@ -8,15 +8,20 @@ The main purpose of this package is to fit a covariate-dependent infinite hidden
 This package relies on the following R packages. Install these packages in the R environment by using the install.packages("") command.  
 
 Rcpp 
+
 RcppArmadillo  
+
 parallel
+
 mvnfast
+
 salso
 
 
 Then you can install psbpHMM by running the following lines in the R console: 
 
 library(devtools)
+
 install_github( "lvhoskovec/psbpHMM", build_vignettes = TRUE)
 
 
