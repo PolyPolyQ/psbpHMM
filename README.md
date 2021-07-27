@@ -9,17 +9,10 @@ This package relies on the following R packages. Install these packages in the R
 
 Rcpp 
 RcppArmadillo  
-mvtnorm 
-truncnorm
-tmvtnorm
 parallel
-tmvmixnorm
-matrixcalc
 mvnfast
-gdata
-invgamma
 salso
-gtools
+
 
 Then you can install psbpHMM by running the following lines in the R console: 
 
