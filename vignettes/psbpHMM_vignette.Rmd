@@ -23,11 +23,13 @@ library(RcppArmadillo)
 library(parallel)
 library(mvnfast)
 library(salso)
+library(devtools)
 ```
 
-Next, install the package. 
+Next, install the package from GitHub. 
 
 ```{r}
+devtools::install_github("lvhoskovec/psbpHMM")
 library(psbpHMM)
 ```
 

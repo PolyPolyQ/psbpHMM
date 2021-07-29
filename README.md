@@ -24,4 +24,7 @@ library(devtools)
 
 install_github( "lvhoskovec/psbpHMM", build_vignettes = TRUE)
 
+library(psbpHMM)
+
+vignette("psbpHMM_vignette")
 
