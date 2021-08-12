@@ -44,6 +44,7 @@ library(matrixcalc)
 library(tmvmixnorm)
 library(rlist)
 library(truncnorm)
+library(mvnfast)
 ```
 
 The package can then be installed from gitHub. 
@@ -70,10 +71,13 @@ In these data, 2.5$\%$ of the data are MAR and 2.5$\%$ of the data are below the
 
 The object `dat` is a list with 6 elements: y is a list where each element contains an n by p matrix of simulated data for each subject with MAR observations denoted by NA and below LOD observations denoted by -Inf; y.complete is a list of the complete data for each subject before missing observations were removed; z.true is a list of the true hidden state trajectories for each subject; K is the true number of hidden states among all time series; mu.true is a K by p matrix of the true state-specific means; and lod is a list of the limits of detection for each subject. 
 
-We can plot the data to see what it looks like, with the true hidden states color-coded. 
+We can plot the data to see what it looks like. We plot all three exposures for one time series. 
 
 ```{r, cache = TRUE}
-plot(1:288, dat$y[[1]][,1], col = dat$z.true[[1]], pch = 19, ylab = "data", xlab = "time")
+par(mfrow = c(1,3))
+plot(1:288, dat$y[[1]][,1], col = dat$z.true[[1]], pch = 19, ylab = "exposure 1", xlab = "time", type = "l")
+plot(1:288, dat$y[[1]][,2], col = dat$z.true[[1]], pch = 19, ylab = "exposure 2", xlab = "time", type = "l")
+plot(1:288, dat$y[[1]][,3], col = dat$z.true[[1]], pch = 19, ylab = "exposure 3", xlab = "time", type = "l")
 ```
 
 # Models #
@@ -181,15 +185,23 @@ There is an option to use a resolvent kernel to update the parameters of the low
 
 # Examples #
 
-We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. We specify the tuning parameters since our data has missing observations. 
+We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. Since our data has missing observations, we specify the tuning parameters for the MH independence sampler. Here we run the model for 200 iterations with 100 burn-in and save 50 imputations post burn-in. On your own data, be sure to run the model for a long enough chain to reach convergence. 
+
+(eval = FALSE)
 
 
-```{r, cache = TRUE}
-fit_no_cov = miHMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
+```{r, eval = FALSE, cache = TRUE}
+fit_no_cov = miHMM(niter = 200, nburn = 100, y = dat$y, ycomplete = dat$y.complete, 
       z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, missing = TRUE, 
       tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-      len.imp = 5)
+      len.imp = 50)
 ```
+
+
+```{r, echo = FALSE}
+fit_no_cov = readRDS("~/Documents/Lauren/Rpackages/psbpHMM/data/fit_no_cov.rds")
+```
+
 
 First, let's look at the MH acceptance rates. We want to set the tuning parameters so that the MH acceptances rates are between 0.1 and 0.4. 
 
@@ -213,21 +225,33 @@ q = ncol(X[[1]])
 
 Now that we have covariates for each subject, we can fit the model. 
 
-```{r, cache = TRUE}
-fit_cyclical = mciHMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
+```{r, eval = FALSE, cache = TRUE}
+fit_cyclical = mciHMM(niter = 200, nburn = 100, y = dat$y, ycomplete = dat$y.complete, 
                       X = X, z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, 
                       missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-                      len.imp = 5)
+                      len.imp = 50)
+```
+
+
+```{r, echo = FALSE}
+fit_cyclical = readRDS("~/Documents/Lauren/Rpackages/psbpHMM/data/fit_cyclical.rds")
 ```
 
 Last, we fit the model with subject-specific effects of covariates. To do so, we specify the parameter `rmlist` to provide categorical indicators of the repeated time series for each subject. Each integer corresponds to a unique subject. The order of the categorical variables in the vector `rmlist` must be the same as the order of the time series in the lists `X` and `y` data. The following `rmlist` represents 4 unique subjects each with 5 repeated sampling days. 
 
-```{r, cache = TRUE}
+```{r}
 rmlist = c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4)
-fit_ss = mciHMM(niter = 100, nburn = 50, y = dat$y, rmlist = rmlist, ycomplete = dat$y.complete, 
+```
+
+```{r, eval = FALSE, cache = TRUE}
+fit_ss = mciHMM(niter = 200, nburn = 100, y = dat$y, rmlist = rmlist, ycomplete = dat$y.complete, 
              X = X, z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, 
              missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
              len.imp = 50)
+```
+
+```{r, echo = FALSE}
+fit_ss = readRDS("~/Documents/Lauren/Rpackages/psbpHMM/data/fit_ss.rds")
 ```
 
 # Analyze Results #

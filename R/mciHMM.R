@@ -69,7 +69,6 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
 
   if(!is.null(rmlist)){
     if(!is.numeric(rmlist)) stop("rmlist must be a numeric vector")
-    if(sort(unique(rmlist)) != seq(1:max(rmlist))) stop("rmlist incorrectly specified")
   }
   
   if(!is.numeric(unlist(y))) stop("y must be numeric")
