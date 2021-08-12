@@ -185,10 +185,10 @@ We demonstrate each model here. First we fit the homogenous PSPB iHMM to the sim
 
 
 ```{r, cache = TRUE}
-fit_no_cov = miHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
+fit_no_cov = miHMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
       z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, missing = TRUE, 
       tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-      len.imp = 25)
+      len.imp = 5)
 ```
 
 First, let's look at the MH acceptance rates. We want to set the tuning parameters so that the MH acceptances rates are between 0.1 and 0.4. 
@@ -214,10 +214,10 @@ q = ncol(X[[1]])
 Now that we have covariates for each subject, we can fit the model. 
 
 ```{r, cache = TRUE}
-fit_cyclical = mciHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
+fit_cyclical = mciHMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
                       X = X, z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, 
                       missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-                      len.imp = 25)
+                      len.imp = 5)
 ```
 
 Last, we fit the model with subject-specific effects of covariates. To do so, we specify the parameter `rmlist` to provide categorical indicators of the repeated time series for each subject. Each integer corresponds to a unique subject. The order of the categorical variables in the vector `rmlist` must be the same as the order of the time series in the lists `X` and `y` data. The following `rmlist` represents 4 unique subjects each with 5 repeated sampling days. 
@@ -272,11 +272,11 @@ In our simulation study, we compare our proposed joint approach to the models fi
 
 ```{r, cache = TRUE}
 fit_indep_cyclical = mclapply(1:20, FUN = function(i){
-  mciHMM(niter = 100, nburn = 50, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
+  mciHMM(niter = 10, nburn = 5, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
                       X = list(X[[i]]), z.true = dat$z.true[[i]], lod = list(dat$lod[[i]]), 
                       mu.true = dat$mu.true, missing = TRUE, 
                       tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-                      len.imp = 50)
+                      len.imp = 5)
 })
 ```
 
@@ -289,10 +289,10 @@ getIndepSimRsults(fit1 = fit_indep_cyclical, y = dat$y)
 Finally, we include in our package a function to fit a truncated Dirichlet process mixture model (DPMM) jointly to multiple time series. 
 
 ```{r, cache = TRUE}
-fit_dpmm = fitDPMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
+fit_dpmm = fitDPMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
              K.start = 50, z.true = dat$z.true, lod = dat$lod, 
              mu.true = dat$mu.true, missing = TRUE, 
-             tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 3, len.imp = 50)
+             tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 3, len.imp = 5)
 ```
 
 Get the results using `getJointSimResults` as before. 

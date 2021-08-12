@@ -24,10 +24,10 @@
 simData <- function(n=20, t.max=288, K = 6, p = 3, 
                    trend = "shared", missingLevel = 0){
   
-  if(!is.integer(n) | n < 1) stop("n must be an integer greater than 0")
-  if(!is.integer(t.max) | t.max < 3) stop("t.max must be an integer greater than 2")
-  if(!is.integer(K) | K < 1) stop("K must be an integer greater than 0")  
-  if(!is.integer(p) | p < 1) stop("p must be an integer greater than 0")
+  if(n < 1) stop("n must be an integer greater than 0")
+  if(t.max < 3) stop("t.max must be an integer greater than 2")
+  if(K < 1) stop("K must be an integer greater than 0")  
+  if(p < 1) stop("p must be an integer greater than 0")
   if(trend != "shared" & trend != "distinct") stop("must specify trend = shared or trend = distinct")
   if(missingLevel < 0 | missingLevel >= 1) stop("missingLevel must be greater than or equal to 0 and less than 1")
   

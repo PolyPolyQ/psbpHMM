@@ -48,10 +48,6 @@
 #'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
 #'        \item mar.sse: sum of squared errors of MAR imputations, if ycomplete is given 
 #'        \item lod.sse: sum of squared errors of imputations below LOD, if ycomplete is given 
-#'        \item mar.bias: mean bias of MAR imputations, if ycomplete is given
-#'        \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
-#'        \item mar.sum.bias: sum of bias of MAR imputations, if ycomplete is given
-#'        \item lod.sum.bias: sum of bias of imputations below LOD, if ycomplete is given
 #'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
 #'        \item ycomplete: complete data
 #'        \item MH.arate: average MH acceptance rate for lower triangular elements
@@ -70,8 +66,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   # catch problems with parameter input 
   if(niter <= nburn) stop("niter must be greater than nburn")
   if(nburn < 0) stop("nburn must be greater than or equal to 0")
-  if(!is.integer(niter) | !is.integer(nburn)) stop("nburn and niter must be integers")
-  
+
   if(!is.null(rmlist)){
     if(!is.numeric(rmlist)) stop("rmlist must be a numeric vector")
     if(sort(unique(rmlist)) != seq(1:max(rmlist))) stop("rmlist incorrectly specified")
@@ -80,8 +75,10 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   if(!is.numeric(unlist(y))) stop("y must be numeric")
   if(!is.numeric(unlist(X))) stop("X must be numeric")
   if(!is.numeric(unlist(ycomplete)) & !is.null(ycomplete)) stop("ycomplete must be numeric")
-  
-  
+
+  if(!is.null(holdout) & any(!unique(unlist(holdout)) %in% c(0,1,2)) ){
+    stop("holdout data set incorrectly specified, must contain only 0, 1, and 2.")
+  }
   
   ### X is a list with a matrix for each i ### 
   if(missing){
@@ -118,7 +115,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     ycomplete <- list(matrix(ycomplete, ncol= 1))
     z.true <- list(z.true)
   }else{
-    stop("y must be a list, matrix, or numeric")
+    stop("bad input: y must be a list, matrix, or vector of numeric data")
   }
   
   # X is a list 
@@ -1031,8 +1028,6 @@ list1 <- list(z.save = z.save, K.save = K.save,
               mu.sse = mu.sse,
               mar.mse = mar.mse, lod.mse = lod.mse,
               mar.sse = mar.sse, lod.sse = lod.sse,
-              mar.bias = mar.bias, lod.bias = lod.bias,
-              mar.sum.bias = mar.sum.bias, lod.sum.bias = lod.sum.bias,
               mismat = mismat, ycomplete = ycomplete,
               MH.arate = MH.a/(length(al)*sum(K.save)),
               MH.lamrate = MH.lam/(p*sum(K.save)))

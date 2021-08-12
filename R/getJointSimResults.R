@@ -14,8 +14,6 @@
 
 getJointSimResults <- function(fit1){
  
-  if(class(fit1)!="iHMM") stop("object must be of type iHMM")
-  
   ham1 = mean(fit1$hamming)
   mu.mse1 = mean(fit1$mu.mse)
   mar.mse1 = mean(fit1$mar.mse)

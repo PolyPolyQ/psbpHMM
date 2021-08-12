@@ -16,9 +16,6 @@
 #'
 getIndepSimRsults <- function(fit1, y){
   
-  if(class(fit1)!="iHMM") stop("object must be of type iHMM")
-  
-  
   t.max = nrow(y[[1]])
   n = length(fit1) # number of independently fit time series 
   

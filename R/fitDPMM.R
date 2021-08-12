@@ -39,8 +39,6 @@
 #'        \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
 #'        \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
 #'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
-#'        \item mar.bias: mean bias of MAR imputations, if ycomplete is given
-#'        \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
 #'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
 #'        \item ycomplete: complete data
 #'        \item MH.arate: average MH acceptance rate for lower triangular elements
@@ -59,7 +57,6 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   # catch problems with parameter input 
   if(niter <= nburn) stop("niter must be greater than nburn")
   if(nburn < 0) stop("nburn must be greater than or equal to 0")
-  if(!is.integer(niter) | !is.integer(nburn)) stop("nburn and niter must be integers")
 
   
   if(!is.numeric(unlist(y))) stop("y must be numeric")
@@ -669,7 +666,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   list1 <- list(z.save = z.save, K.save = K.save,
                 ymar = y.mar.save, ylod = y.lod.save,
                 hamming = ham, mu.mse = mu.mse, mar.mse = mar.mse, 
-                lod.mse = lod.mse, mar.bias = mar.bias, lod.bias = lod.bias,
+                lod.mse = lod.mse, 
                 mismat = mismat, ycomplete = ycomplete,
                 MH.arate = MH.a/(length(al)*sum(K.save)),
                 MH.lamrate = MH.lam/(p*sum(K.save)))

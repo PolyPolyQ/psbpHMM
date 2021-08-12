@@ -42,10 +42,6 @@
 #'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
 #'        \item mar.sse: sum of squared errors of MAR imputations, if ycomplete is given 
 #'        \item lod.sse: sum of squared errors of imputations below LOD, if ycomplete is given 
-#'        \item mar.bias: mean bias of MAR imputations, if ycomplete is given
-#'        \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
-#'        \item mar.sum.bias: sum of bias of MAR imputations, if ycomplete is given
-#'        \item lod.sum.bias: sum of bias of imputations below LOD, if ycomplete is given
 #'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = observed, 1 = MAR, 2 = below LOD
 #'        \item ycomplete: complete data
 #'        \item MH.arate: average MH acceptance rate for lower triangular elements
@@ -64,8 +60,7 @@ miHMM <- function(niter, nburn, y, ycomplete=NULL,
   # catch problems with parameter input 
   if(niter <= nburn) stop("niter must be greater than nburn")
   if(nburn < 0) stop("nburn must be greater than or equal to 0")
-  if(!is.integer(niter) | !is.integer(nburn)) stop("nburn and niter must be integers")
-  
+
   if(!is.numeric(unlist(y))) stop("y must be numeric")
   if(!is.numeric(unlist(ycomplete)) & !is.null(ycomplete)) stop("ycomplete must be numeric")
   
@@ -103,7 +98,7 @@ miHMM <- function(niter, nburn, y, ycomplete=NULL,
     ycomplete <- list(matrix(ycomplete, ncol= 1))
     z.true <- list(z.true)
   }else{
-    stop("y must be a list, matrix, or numeric")
+    stop("bad input: y must be a list, matrix, or vector of numeric data")
   }
   
   # X is null 
@@ -819,8 +814,6 @@ miHMM <- function(niter, nburn, y, ycomplete=NULL,
                 mu.sse = mu.sse,
                 mar.mse = mar.mse, lod.mse = lod.mse, 
                 mar.sse = mar.sse, lod.sse = lod.sse, 
-                mar.bias = mar.bias, lod.bias = lod.bias,
-                mar.sum.bias = mar.sum.bias, lod.sum.bias = lod.sum.bias,
                 mismat = mismat, ycomplete = ycomplete,
                 MH.arate = MH.a/(length(al)*sum(K.save)),
                 MH.lamrate = MH.lam/(p*sum(K.save)))
