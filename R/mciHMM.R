@@ -67,13 +67,28 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
                         holdout = NULL){
 
 
+  # catch problems with parameter input 
+  if(niter <= nburn) stop("niter must be greater than nburn")
+  if(nburn < 0) stop("nburn must be greater than or equal to 0")
+  if(!is.integer(niter) | !is.integer(nburn)) stop("nburn and niter must be integers")
+  
+  if(!is.null(rmlist)){
+    if(!is.numeric(rmlist)) stop("rmlist must be a numeric vector")
+    if(sort(unique(rmlist)) != seq(1:max(rmlist))) stop("rmlist incorrectly specified")
+  }
+  
+  if(!is.numeric(unlist(y))) stop("y must be numeric")
+  if(!is.numeric(unlist(X))) stop("X must be numeric")
+  if(!is.numeric(unlist(ycomplete)) & !is.null(ycomplete)) stop("ycomplete must be numeric")
+  
+  
+  
   ### X is a list with a matrix for each i ### 
   if(missing){
     algorithm = "MH"
     SigmaPrior = "wishart"
   }else{
     algorithm = "Gibbs"
-    #SigmaPrior = "non-informative"
     SigmaPrior = "wishart"
   }
   
@@ -102,6 +117,8 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
     y <- list(matrix(y, ncol = 1))
     ycomplete <- list(matrix(ycomplete, ncol= 1))
     z.true <- list(z.true)
+  }else{
+    stop("y must be a list, matrix, or numeric")
   }
   
   # X is a list 
@@ -138,22 +155,12 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   if(is.null(priors$a2)) priors$a2 <- 1 # shape for vinv.alpha
   if(is.null(priors$b2)) priors$b2 <- 1 # rate for vinv.alpha
   
-  if(SigmaPrior == "wishart"){
-    # missing data case (MH udpates)
-    if(is.null(priors$R)) priors$R <- diag(p) # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k
-    if(is.null(priors$nu)) priors$nu <- p+2 # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k, nu > p+1
-    nu.df <- priors$nu # 
-    R.mat <- priors$R 
-  }else if(SigmaPrior == "non-informative"){
-    # complete data case (Gibbs updates)
-    if(is.null(priors$bj)) priors$bj <- rep(1, p) # Huang and Wand advise 10e5
-    if(is.null(priors$nu)) priors$nu <- 2 # Huang and Wand advise 2, p+4 for so the variance exists
-    nu.df <- priors$nu + p - 1 # Huang and Wand, prior df 
-    aj.inv <- rgamma(p, shape = 1/2, rate = 1/(priors$bj^2)) # these are 1/aj 
-    # starting value for R.mat, the matrix parameter on Sigma.Inv
-    R.mat <- 2*priors$nu*diag(aj.inv) 
-    # we model aj.inv with gamma(shape = 1/2, rate = 1/(b_j^2))
-  }
+  # Sigma 
+  if(missing) priors$R <- diag(p)
+  if(is.null(priors$R)) priors$R <- diag(p) # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k
+  if(is.null(priors$nu)) priors$nu <- p+2 # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k, nu > p+1
+  nu.df <- priors$nu # 
+  R.mat <- priors$R 
   
   if(is.null(priors$lambda)) priors$lambda <- 10 
   
@@ -506,37 +513,6 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
         mu[[k]] <- rmvn(n=1, mu=mu_nk, sigma=chol((1/lambda_nk)*as.matrix(Sigma[[k]], p, p)), isChol = TRUE)  
       } # end if MH 
     } # end sample theta  
-    
-    
-    ###################################################################################
-    ### if SigmaPrior == "non-informative": Update aj.inv, detR.star and log.stuff  ###
-    ###################################################################################
-    
-    if(SigmaPrior == "non-informative"){
-      # then update aj.inv for j = 1 to p 
-      shape.aj <- (K*(priors$nu+p-1)+1)/2
-      sigmajj <- lapply(1:K, FUN = function(k){
-        diag(invMat(Sigma[[k]])) # cppFunction
-      }) # diagonal elements of each Sigma.Inv_k
-      diags <- numeric()
-      for(k in 1:K){
-        diags <- rbind(diags, sigmajj[[k]])
-      }
-      sumdiags <- apply(diags, 2, sum) # sum of diagonals of Sigma.Inv for k = 1 to K 
-      rate.aj <- 1/(priors$bj^2) + priors$nu*sumdiags
-      aj.inv <- rgamma(p, shape = shape.aj, rate = rate.aj) # these are 1/aj 
-      R.mat <- 2*priors$nu*diag(aj.inv)
-      
-      detR.star <- mclapply(1:n, FUN = function(i){
-        sapply(1:t.max, FUN = function(t){
-          x <- R.mat + priors$lambda*tcrossprod(priors$mu0) + tcrossprod(y[[i]][t,]) - 
-            (1/(1+priors$lambda))*tcrossprod(priors$lambda*priors$mu0+y[[i]][t,])
-          return(det(x))
-        })})
-      
-      log.stuff <- (p/2)*log(priors$lambda/(pi*(priors$lambda+1)))+log(gampp)+(nu.df/2)*log(det(R.mat))
-    }
-    
     
     ################
     ### update u ### ### Rcpp

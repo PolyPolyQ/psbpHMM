@@ -56,6 +56,17 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
                           holdout = NULL){
   
 
+  # catch problems with parameter input 
+  if(niter <= nburn) stop("niter must be greater than nburn")
+  if(nburn < 0) stop("nburn must be greater than or equal to 0")
+  if(!is.integer(niter) | !is.integer(nburn)) stop("nburn and niter must be integers")
+
+  
+  if(!is.numeric(unlist(y))) stop("y must be numeric")
+  if(!is.numeric(unlist(ycomplete)) & !is.null(ycomplete)) stop("ycomplete must be numeric")
+  
+  
+  
   # the only prior option here is the jointNIW 
   
   #####################

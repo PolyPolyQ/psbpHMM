@@ -3,7 +3,6 @@
 #' @param niter number of total iterations
 #' @param nburn number of burn-in iterations
 #' @param y list of time series data for each time series 
-#' @param rmlist integer vector identifying repeated time series for the same subject with the same number (e.g. c(1,1,2,2,2,3,3))
 #' @param ycomplete complete data, if available, for evaluating imputations
 #' @param priors list of priors
 #' @param K.start starting number of states
@@ -47,7 +46,7 @@
 #'        \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
 #'        \item mar.sum.bias: sum of bias of MAR imputations, if ycomplete is given
 #'        \item lod.sum.bias: sum of bias of imputations below LOD, if ycomplete is given
-#'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
+#'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = observed, 1 = MAR, 2 = below LOD
 #'        \item ycomplete: complete data
 #'        \item MH.arate: average MH acceptance rate for lower triangular elements
 #'        \item MH.lamrate: average MH acceptance rate for diagonal elements 
@@ -55,12 +54,21 @@
 #' @export
 #'
 #'
-miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
+miHMM <- function(niter, nburn, y, ycomplete=NULL,
                    priors=NULL, K.start=NULL, z.true=NULL, lod=NULL,
                    mu.true=NULL, missing = FALSE, 
                    tau2 = NULL, a.tune = NULL, b.tune = NULL,
                    resK = FALSE, eta.star = NULL, len.imp = NULL,
                    holdout = NULL){
+  
+  # catch problems with parameter input 
+  if(niter <= nburn) stop("niter must be greater than nburn")
+  if(nburn < 0) stop("nburn must be greater than or equal to 0")
+  if(!is.integer(niter) | !is.integer(nburn)) stop("nburn and niter must be integers")
+  
+  if(!is.numeric(unlist(y))) stop("y must be numeric")
+  if(!is.numeric(unlist(ycomplete)) & !is.null(ycomplete)) stop("ycomplete must be numeric")
+  
   
   
   # change updates based on missing vs. complete data 
@@ -69,7 +77,6 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
     SigmaPrior = "wishart"
   }else{
     algorithm = "Gibbs"
-    #SigmaPrior = "non-informative"
     SigmaPrior = "wishart"
   }
   
@@ -95,6 +102,8 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
     y <- list(matrix(y, ncol = 1))
     ycomplete <- list(matrix(ycomplete, ncol= 1))
     z.true <- list(z.true)
+  }else{
+    stop("y must be a list, matrix, or numeric")
   }
   
   # X is null 
@@ -118,22 +127,12 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
   if(is.null(priors$b1)) priors$b1 <- 1 # rate for sig2inv.alpha
   if(is.null(priors$b2)) priors$b2 <- 1 # rate for vinv.alpha
   
-  if(SigmaPrior == "wishart"){
-    if(is.null(priors$R)) priors$R <- diag(p) # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k
-    if(is.null(priors$nu)) priors$nu <- p+2 # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k, nu > p+1
-    nu.df <- priors$nu # 
-    R.mat <- priors$R 
-  }else if(SigmaPrior == "non-informative"){
-    # the half-t prior on Sigma_k
-    if(is.null(priors$bj)) priors$bj <- rep(1, p) # Huang and Wand advise 10e5
-    if(is.null(priors$nu)) priors$nu <- 2 # Huang and Wand advise 2, p+4 for so the variance exists
-    nu.df <- priors$nu + p - 1 # Huang and Wand, prior df 
-    aj.inv <- rgamma(p, shape = 1/2, rate = 1/(priors$bj^2)) # these are 1/aj 
-    # starting value for R.mat, the matrix parameter on Sigma.Inv
-    R.mat <- 2*priors$nu*diag(aj.inv) 
-    # we model aj.inv with gamma(shape = 1/2, rate = 1/(b_j^2))
-  }
-  
+  if(missing) priors$R <- diag(p) # must be this prior if there is missing data 
+  if(is.null(priors$R)) priors$R <- diag(p) # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k
+  if(is.null(priors$nu)) priors$nu <- p+2 # Sigma_k ~ Inv.Wish(nu, R) hyperparameter for Sigma_k, nu > p+1
+  nu.df <- priors$nu # 
+  R.mat <- priors$R 
+
   # concentration on Sigma_k for NIW 
   if(is.null(priors$lambda)) priors$lambda <- 10 
   
@@ -474,37 +473,6 @@ miHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL,
         
       } # end if MH 
     } # end sample theta  
-    
-    ######################################################################
-    ### if SigmaPrior == "NI": Update aj.inv, detR.star and log.stuff  ###
-    ######################################################################
-    
-    if(SigmaPrior == "non-informative"){
-      # then update aj.inv for j = 1 to p 
-      shape.aj <- (K*(priors$nu+p-1)+1)/2
-      sigmajj <- lapply(1:K, FUN = function(k){
-        diag(chol2inv(chol(Sigma[[k]])))
-      }) # diagonal elements of each Sigma.Inv_k
-      diags <- numeric()
-      for(k in 1:K){
-        diags <- rbind(diags, sigmajj[[k]])
-      }
-      sumdiags <- apply(diags, 2, sum) # sum of diagonals of Sigma.Inv for k = 1 to K 
-      rate.aj <- 1/(priors$bj^2) + priors$nu*sumdiags
-      aj.inv <- rgamma(p, shape = shape.aj, rate = rate.aj) # these are 1/aj 
-      R.mat <- 2*priors$nu*diag(aj.inv)
-      
-      detR.star <- mclapply(1:n, FUN = function(i){
-        sapply(1:t.max, FUN = function(t){
-          x <- R.mat + priors$lambda*tcrossprod(priors$mu0) + tcrossprod(y[[i]][t,]) - 
-            (1/(1+priors$lambda))*tcrossprod(priors$lambda*priors$mu0+y[[i]][t,])
-          return(det(x))
-        })})
-      
-      log.stuff <- (p/2)*log(priors$lambda/(pi*(priors$lambda+1)))+log(gampp)+(nu.df/2)*log(det(R.mat))
-    }
-    
-    
     
     ################
     ### update u ### 

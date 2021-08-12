@@ -21,8 +21,16 @@
 #' @export
 #'
 
-simData <- function(n, t.max=24, K = 6, p = 3, 
-                   trend = "shared", missingLevel = 0.5){
+simData <- function(n=20, t.max=288, K = 6, p = 3, 
+                   trend = "shared", missingLevel = 0){
+  
+  if(!is.integer(n) | n < 1) stop("n must be an integer greater than 0")
+  if(!is.integer(t.max) | t.max < 3) stop("t.max must be an integer greater than 2")
+  if(!is.integer(K) | K < 1) stop("K must be an integer greater than 0")  
+  if(!is.integer(p) | p < 1) stop("p must be an integer greater than 0")
+  if(trend != "shared" & trend != "distinct") stop("must specify trend = shared or trend = distinct")
+  if(missingLevel < 0 | missingLevel >= 1) stop("missingLevel must be greater than or equal to 0 and less than 1")
+  
   
   if(trend == "shared"){
     z.true <- list()
@@ -101,8 +109,7 @@ simData <- function(n, t.max=24, K = 6, p = 3,
   for(i in 1:n){
     ymat <- rbind(ymat, y[[i]])
   }
-  
-  if(missingLevel < 0 | missingLevel > 1) stop("missingLevel must be between 0 and 1")
+
   
   if(missingLevel > 0){
     # split between MAR and below LOD

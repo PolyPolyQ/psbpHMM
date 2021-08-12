@@ -1,7 +1,7 @@
 ---
 title: "Package Tutorial for psbpHMM"
 output: rmarkdown::html_vignette
-date: July 22, 2021
+date: August 11, 2021
 author: Lauren Hoskovec
 vignette: >
   %\VignetteIndexEntry{Package Tutorial for psbpHMM}
@@ -13,41 +13,62 @@ vignette: >
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Introduction #
+The R package psbpHMM provides several functions for fitting covariate-dependent infinite hidden Markov models (iHMM) via the probit stick-breaking process (PSBP). For more details on this method, see [Hoskovec et al.]. The following functions are available in the package psbpHMM: 
 
-The R package psbpHMM provides several functions for fitting covariate-dependent infinite hidden Markov models (iHMM) via the probit stick-breaking process (PSBP). We provide some examples for how to use the package here. First, install the following dependencies. 
+|function          |         brief description of usage |
+|------------------|------------------------------------|
+simData | simulate data to reproduce simulation in [Hoskovec et al.] | 
+miHMM | fit homogeneous infinite hidden Markov model to one or more time series | 
+mciHMM | fit covariate-dependent infinite hidden Markov model to one or more time series |
+getJointSimResults | summarize simulation output from jointly fit models |
+getIndepSimResults | summarize simulation output from independently fit models |
+|fitDPMM | fit Dirichlet process mixture model jointly to multiple time series |
+|fixedK_clustering | fit a mixture of multivariate normal distributions to the data based on pre-specified clusters |
 
-```{r, results = FALSE}
+
+In this vignette, we show how to install the package, simulate data, fit three versions of our proposed approach, and summarize the MCMC output. The package contains everything needed to conduct a simulation study similar to that in [Hoskovec et al.]. 
+
+# Install the Package #
+
+First, we need to install the following packages.  
+
+```{r, message = FALSE}
 library(Rcpp) 
 library(RcppArmadillo)  
 library(parallel)
-library(mvnfast)
-library(salso)
-library(devtools)
+library(gdata)
+library(invgamma)
+library(gtools)
+library(mvtnorm)
+library(matrixcalc)
+library(tmvmixnorm)
+library(rlist)
+library(truncnorm)
 ```
 
-Next, install the package from GitHub. 
+The package can then be installed from gitHub. 
 
-```{r}
-devtools::install_github("lvhoskovec/psbpHMM")
+```{r, message = FALSE, results = FALSE}
+devtools::install_github("lvhoskovec/psbpHMM", build_vignettes = TRUE)
 library(psbpHMM)
 ```
 
+# Simulate Data #
 
-Next we will simulate data. The function  `simData` provides options to simulate multiple time series with shared or distinct temporal trends and any amount of missing data. If there is missing data, it will be split evenly between data that is missing at random (MAR) and below the limit of detection (LOD). The simData function takes in the following parameters: `n` is the number of time series, `t.max` is the length of each time series, `p` is the dimension of the data, and `K` is the number of hidden states shared among all time series. The parameter `trend` allows us to specify shared or distinct temporal trends among the time series, and the parameter `missingLevel` allows us to specify the amount of missing data as a percentage. The following line provides an example of simulating data with shared temporal trends and 5$\%$ missing data.
+The package contains functions to simulate data similar to the simulation study in [Hoskovec et al.], using the `simData` function. By default, `simData` generates 3-dimensional multivariate time series for 20 subjects, where each subject has 288 time points, 6 true clusters, and shared temporal patterns. 
+
+The `simData` function takes in the following parameters: `n` is the number of time series, `t.max` is the length of each time series, `p` is the dimension of the data, and `K` is the true number of hidden states shared among all time series. The parameter `trend` allows us to specify shared or distinct temporal trends among the time series, and the parameter `missingLevel` allows us to specify the proportion of missing data, which is split evenly between missing at random (MAR) and below the limit of detection (LOD). Based on these parameters, data are simulated as described in Section 3 in [Hoskovec et al.]. 
+
+Here we simulate a data set with 5$\%$ missing observations. 
 
 ```{r, cache=TRUE}
 set.seed(42412)
 dat = simData(n=20, t.max = 288, K = 6, p = 3, trend = "shared", missingLevel = 0.05)
 ```
 
-In these data, 2.5$\%$ of the data is MAR and 2.5$\%$ of the data is below the LOD. Hence, the fixed and known LOD is set at the 0.025 quantile of the pooled data set. 
+In these data, 2.5$\%$ of the data are MAR and 2.5$\%$ of the data are below the LOD. Hence, the fixed and known LOD is set at the 0.025 quantile of the pooled data set. 
 
-See the help file to see what the `simData` function provides.  
-
-```{r, cache = TRUE}
-?simData
-```
+The object `dat` is a list with 6 elements: y is a list where each element contains an n by p matrix of simulated data for each subject with MAR observations denoted by NA and below LOD observations denoted by -Inf; y.complete is a list of the complete data for each subject before missing observations were removed; z.true is a list of the true hidden state trajectories for each subject; K is the true number of hidden states among all time series; mu.true is a K by p matrix of the true state-specific means; and lod is a list of the limits of detection for each subject. 
 
 We can plot the data to see what it looks like, with the true hidden states color-coded. 
 
@@ -55,28 +76,128 @@ We can plot the data to see what it looks like, with the true hidden states colo
 plot(1:288, dat$y[[1]][,1], col = dat$z.true[[1]], pch = 19, ylab = "data", xlab = "time")
 ```
 
-The package psbpHMM provides two functions for fitting iHMMs. We first demonstrate the function `miHMM`, which does not take any covariates. We will use the data we simulated in the list `dat`. Since there is missing data, we use a Metropolis-Hastings (MH) independence samper to update the parameters of the state-specific covariance matrices. Hence, we must specify the tuning parameters and resolvent kernel parameter for the MH updates. On your own data, be sure to tune these parameters to obtain optimal MH acceptance rates. For demonstration purposes, we will only run a very short MCMC chain with 10 total iterations including 5 burn-in. We will save 5 imputations (`len.imp`). Due to the computational complexity of the model, the following line takes approximately 30-40 seconds to run. 
+# Models #
+
+## Statistical Approach ##
+
+The package psbpHMM provides functionality to fit three types of iHMMs. Briefly, let $i=1, \ldots, n$ denote subjects and $t = 1, \ldots, T$ denote time points, so that $\mathbf{y}_{it}$ is observed data for subject $i$ at time $t$ and $z_{it}$ is the hidden state for subject $i$ at time $t$.
+
+All models have the same emission distribution for the data conditional on the hidden states. The emission distribution is 
+
+$$
+\begin{eqnarray}
+f(\textbf{y}_{it}|z_{it}=k) & \equiv & \text{N}(\boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)  \\
+\boldsymbol{\mu}_k|\boldsymbol{\Sigma}_k & \sim & \text{N}\left( \boldsymbol{\mu}_0, \frac{1}{\lambda}\boldsymbol{\Sigma}_k \right) \\
+\boldsymbol{\Sigma}_k & \sim & \text{Inverse Wishart} (\nu, \mathbf{R}), 
+\end{eqnarray}
+$$
+
+where $\boldsymbol{\mu}_0$, $\lambda$, $\nu$, and $\mathbf{R}$ are fixed hyperparameters. 
+
+The difference among the three models lies in the specification of the the transition distribution. 
+
+First, is a model without any covariates (1) in the transition distribution; that is, the probability of transitioning from state j to state k is: 
+
+$$
+P(z_{it} = k | z_{i,t-1} = j) = \Phi (\alpha_{jk} ) \prod_{l < k} \lbrace 1 - \Phi (\alpha_{jl})\rbrace. 
+
+$$
+
+Second is a model with covariate-dependent transitions (2). The covariate-dependent transition distribution is 
+
+$$
+\begin{eqnarray}
+P(z_{it} = k | z_{i,t-1} = j, \mathbf{x}_{it}) &=& \Phi (\alpha_{jk} + \mathbf{x}_{it}^T\boldsymbol{\beta}_k ) \prod_{l < k} \lbrace 1 - \Phi (\alpha_{jl} +  \mathbf{x}_{it}^T\boldsymbol{\beta}_l )\rbrace,
+\end{eqnarray}
+$$
+
+where $\mathbf{x}_{it}$ are covariates for subject $i$ at time $t$. 
+
+Third is a model with subject-specific effects of the covariates in the transition distribution to account for repeated sampling days for the same individual (3). Here, the transition distribution is 
+
+$$
+\begin{eqnarray}
+P(z_{i_st} = k | z_{i_s,t-1} = j, \mathbf{x}_{i_st}) = \Phi(\alpha_{jk} + \mathbf{x}_{i_st}^T\boldsymbol{\beta}_k + \mathbf{x}_{i_st}^T\boldsymbol{\gamma}_{ik}  )\prod_{l < k} \lbrace 1 - \Phi(\alpha_{jl} + \mathbf{x}_{i_st}^T\boldsymbol{\beta}_l + \mathbf{x}_{i_st}^T\boldsymbol{\gamma}_{il} )\rbrace,
+\end{eqnarray}
+$$
+
+where $i_s$ denotes sampling day $s$ for subject $i$. 
+
+The model is completed with the following hyperpriors 
+
+$$
+\begin{eqnarray}
+\alpha_{jk}|\sigma^2_\alpha & \sim & \text{N}(\mu_\alpha, \sigma^2_{\alpha}) \text{ for } j \neq k \\
+\sigma^{-2}_\alpha & \sim & \text{Gamma}(a_1, b_1) \\
+\alpha_{jj}|m_\alpha, v_\alpha & \sim & \text{N}(m_\alpha, v_{\alpha}) \\
+m_\alpha & \sim & \text{N}(m_0, v_0) \\
+v_\alpha^{-1} & \sim &  \text{Gamma}(a_2, b_2) \\
+\boldsymbol{\beta}_k & \sim & \text{N}(\boldsymbol{\mu}_\beta, \boldsymbol{\Sigma}_\beta) \\
+\boldsymbol{\gamma}_{ik} & \sim & \text{N}(\boldsymbol{\mu}_\gamma, \kappa^2 \boldsymbol{\Sigma}_\gamma) \\
+\kappa^{-2} & \sim & \text{Gamma}(\alpha_\kappa,\beta_\kappa).
+\end{eqnarray}
+$$
+
+## Function Details ##
+
+Model (1) is fit using the function `miHMM` and models (2) and (3) are fit using the function `mciHMM`. The parameters in `miHMM` are a subset of those in `mciHMM`, so we describe how to use the function `mciHMM` here. 
+
+To begin, `niter` is the total number of MCMC iterations, `nburn` is the number of burn-in iterations, `y` is the list of data for fitting and may include missing observations, `rmlist` is a vector of integer labels for the repeated sampling days, `ycomplete` is optional and is the list of complete data, `X` is a list of time-varying covariates for each subject, and `priors` is the list of prior hyperparameters. The prior options for this model include the following: 
+
+|control parameter | model parameter | default value | description      |
+|------------------|-----------------|---------------|------------------|
+|mu0         |$\boldsymbol{\mu}_0$  | 0             |mean parameter for Normal prior on $\boldsymbol{\mu}_k$ |
+|lambda| $\lambda$ | 0 | scale parameter for Normal prior on $\boldsymbol{\mu}_k$  | 
+|nu|$\nu$ |  1 |  degrees of freedom for Inverse Wishart prior on $\boldsymbol{\Sigma}_k$  |
+|R | $\mathbf{R} | $\mathbf{I}_p$ | matrix parameter for Inverse Wishart prior on $\boldsymbol{\Sigma}_k$ |
+|mu.alpha |$\mu_\alpha$   | 0       |mean parameter for Normal priors on $\alpha_{jk$, $j \neq k$|
+|a1| $a_1$ | 1 |  shape parameter for gamma prior on $\sigma_\alpha^{-2}$ |
+|b1|$b_1$  |  1 |   rate parameter for gamma prior on $\phi_2^{-2}$ |
+|m0 |$m_0$ |0| mean parameter for Normal prior on $m_\alpha$ |
+|v0 |$v_0$ |1| variance parameter for Normal prior on $m_\alpha$|
+|a2|$a_2$ |  1 | shape parameter for gamma prior on $v_\alpha^{-1}$ |
+|b2|$b_2$ |  1 |  rate parameter for gamma prior on $v_\alpha^{-1}$  |
+|mu.beta | $\boldsymbol{\mu}_\beta$ | $\mathbf{0}$ | mean parameter for Normal prior on $\boldsymbol{\beta}_k$ | 
+|Sigma.beta| $\boldsymbol{\Sigma}_\beta$ | $\mathbf{I}$ | variance parameter for Normal prior on $\boldsymbol{\beta}_k$ | 
+|mu.betaS | $\boldsymbol{\mu}_\gamma$ | $\mathbf{0}$ | mean parameter for Normal prior on $\boldsymbol{\gamma}_{ik}$ | 
+|Sigma.betaS| $\boldsymbol{\Sigma}_\gamma$ | $\mathbf{I}$ | variance parameter for Normal prior on $\boldsymbol{\beta}_k$ | 
+|a.kappa | $\alpha_\kappa$ | 1 | shape parameter for gamma prior on $\kappa^{-2}$ 
+|b.kappa | $\alpha_\kappa$ | 1 | rate parameter for gamma prior on $\kappa^{-2}$ 
+
+
+### Additional Parameters to Handle Missing Data ###
+
+The parameter `missing` is logical and indicates if the emission data contains missing observations. In this case, `len.imp` specifies the number of imputations to save post burn-in. The parameter `holdout` is optional and is the same class and dimension of `y` but specifies which observations are in the holdout data set. In `holdout`, 0 denotes observed, 1 denotes MAR, and 2 denotes below LOD. The only reason to specify `holdout` is when evaluating the multiple imputation approach on an incomplete data set: `holdout` specifies the additional data that was removed for evaluation, but not the observations that are missing in the original data set. 
+
+The function also includes parameters that control the independence Metropolis-Hastings (MH) sampler and resolvent kernel used to sample the parameters of $\boldsymbol{\Sigma}_k$ when there is missing data. Details can be found in the Supporting Information of [Hoskovec et al.]. The independence MH sampler uses the following the parameters 
+
+|control parameter | model parameter | default value | description      |
+|------------------|-----------------|---------------|------------------|
+|tau2         |$\tau^2$  | 0.25             |variance parameter for Normal proposal on lower triangular elements |
+|a.tune| $a_\delta$ | 10 | shape parameter for inverse gamma proposal on diagonal elements  | 
+|b.tune|$b_\delta$ |  1 |  rate parameter for inverse gamma proposal on diagonal elements  |
+
+There is an option to use a resolvent kernel to update the parameters of the lower triangular matrix in the decomposition of $\boldsymbol{\Sigma}_k$. The parameter `resK` is a logical parameter; if set to TRUE then the resolvent kernel will be used and `eta.star` specifies the parameter of the geometric distribution for the resolvent kernel. The default value for `eta.star` is 5. 
+
+# Examples #
+
+We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. We specify the tuning parameters since our data has missing observations. 
+
 
 ```{r, cache = TRUE}
-fit_no_cov = miHMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
+fit_no_cov = miHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
       z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, missing = TRUE, 
       tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-      len.imp = 5)
+      len.imp = 25)
 ```
 
-First, let's look at the MH acceptance rates:
+First, let's look at the MH acceptance rates. We want to set the tuning parameters so that the MH acceptances rates are between 0.1 and 0.4. 
 
 ```{r, cache = TRUE}
 fit_no_cov$MH.arate; fit_no_cov$MH.lamrate
 ```
 
-Next, we can use the function `getJointSimResults` to get the summary of evaluation criteria measures used in our simulation study. This function returns the hamming distance (hamming) and MSE for state-specific means (mu.mse) averaged over the iterations post burn-in. It also returns the MSE for MAR data (mar.mse) and data below the LOD (lod.mse) average over the specified number of imputations post burn-in. 
-
-```{r, cache=TRUE}
-getJointSimResults(fit_no_cov)
-```
-
-Next, we demonstrate the model with covariates using the function `mciHMM`. We simulate cyclical temporal trends via a harmonic function of time. We will assume the time points for each time series all correspond to the same time of day, though they may take place on different days. Hence, the harmonic function of time will be identical for all time series. The current version of this model only permits time-varying covariates. The parameter `X` is a list where each element of the list is a matrix that has `t.max` rows and `q` columns, where `q` is the number of covariates.
+Next, we fit the covariate-dependent PSBP. To incorporate covariates, we simulate cyclical temporal trends via a harmonic function of time. We will assume the time points for each time series all correspond to the same time of day, though they may take place on different days. Hence, the harmonic function of time will be identical for all time series. The current version of this model only permits time-varying covariates. 
 
 ```{r, cache = TRUE}
 t.max = 288
@@ -90,40 +211,48 @@ for(i in 1:n){
 q = ncol(X[[1]])
 ```
 
-Now we fit the covariate-dependent model `mciHMM`. 
+Now that we have covariates for each subject, we can fit the model. 
 
 ```{r, cache = TRUE}
-fit_cyclical = mciHMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
+fit_cyclical = mciHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
                       X = X, z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, 
                       missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-                      len.imp = 5)
+                      len.imp = 25)
 ```
 
-We can summarize the results from this model.
-
-```{r, cache = TRUE}
-fit_cyclical$MH.arate; fit_cyclical$MH.lamrate
-getJointSimResults(fit_cyclical)
-```
-
-Finally, we can fit a model with subject-specific effects of covariates. To do so, we specify the parameter `rmlist` to provide categorical indicators of the repeated time series for each subject. Each integer corresponds to a unique subject. The order of the categorical variables in the vector `rmlist` must be the same as the order of the time series in the lists `X` and `y` data. The following `rmlist` represents 4 unique subjects each with 5 repeated sampling days. 
+Last, we fit the model with subject-specific effects of covariates. To do so, we specify the parameter `rmlist` to provide categorical indicators of the repeated time series for each subject. Each integer corresponds to a unique subject. The order of the categorical variables in the vector `rmlist` must be the same as the order of the time series in the lists `X` and `y` data. The following `rmlist` represents 4 unique subjects each with 5 repeated sampling days. 
 
 ```{r, cache = TRUE}
 rmlist = c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4)
-fit_ss = mciHMM(niter = 10, nburn = 5, y = dat$y, rmlist = rmlist, ycomplete = dat$y.complete, 
+fit_ss = mciHMM(niter = 100, nburn = 50, y = dat$y, rmlist = rmlist, ycomplete = dat$y.complete, 
              X = X, z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, 
              missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-             len.imp = 5)
+             len.imp = 50)
 ```
 
-And we summarize this model. 
+# Analyze Results #
+
+The package provides the function `getJointSimResults` to return the evaluation criteria measures used in our simulation study in [Hoskovec et al.]. This function returns the hamming distance (hamming) and MSE for state-specific means (mu.mse) averaged over the iterations post burn-in. It also returns the MSE for MAR data (mar.mse) and data below the LOD (lod.mse) average over the specified number of imputations post burn-in. We can get the summary for each of the models we fit. 
+
+Model (1): no covariates
+
+```{r, cache=TRUE}
+getJointSimResults(fit_no_cov)
+```
+
+Model (2): cyclical function of time as covariates
 
 ```{r, cache = TRUE}
-fit_ss$MH.arate; fit_ss$MH.lamrate
+getJointSimResults(fit_cyclical)
+```
+
+Model (3): subject-specific cyclical function of time 
+
+```{r, cache = TRUE}
 getJointSimResults(fit_ss)
 ```
 
-We provide some functions for post-processing the results. The following code applies to all three of our models. We will show on `fit_cyclical` only. First, we can calculate the most optimal hidden state trajectory using the draws-based latent structure optimization method described by Dahl (2006). We provide a wrapper function for the `dlso` function in the `salso` R package. 
+We provide some functions for post-processing the results. The following code applies to all three of our models. We will show on `fit_cyclical` only. First, we can calculate the most optimal hidden state trajectory using the draws-based latent structure optimization method described by Dahl (2006). We provide a wrapper function for the `dlso` function from the `salso` R package. 
 
 ```{r, cache = TRUE}
 zbest = dlso_wrapper(fit_cyclical)
@@ -143,27 +272,27 @@ In our simulation study, we compare our proposed joint approach to the models fi
 
 ```{r, cache = TRUE}
 fit_indep_cyclical = mclapply(1:20, FUN = function(i){
-  mciHMM(niter = 10, nburn = 5, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
+  mciHMM(niter = 100, nburn = 50, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
                       X = list(X[[i]]), z.true = dat$z.true[[i]], lod = list(dat$lod[[i]]), 
                       mu.true = dat$mu.true, missing = TRUE, 
                       tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-                      len.imp = 5)
+                      len.imp = 50)
 })
 ```
 
-To summarize the results from the independently fit models, use the function `getIndepSimResults`. Here, you must also specify the data. 
+To summarize the results from the independently fit models, use the function `getIndepSimResults`. Here, you must also include the data as a parameter. 
 
 ```{r, cache = TRUE}
 getIndepSimRsults(fit1 = fit_indep_cyclical, y = dat$y)
 ```
 
-Finally, we include in our package a function to fit a truncated Dirichlet process mixture model (DPMM) jointly to multiple time series. See the help file for more details. 
+Finally, we include in our package a function to fit a truncated Dirichlet process mixture model (DPMM) jointly to multiple time series. 
 
 ```{r, cache = TRUE}
-fit_dpmm = fitDPMM(niter = 10, nburn = 5, y = dat$y, ycomplete = dat$y.complete, 
+fit_dpmm = fitDPMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
              K.start = 50, z.true = dat$z.true, lod = dat$lod, 
              mu.true = dat$mu.true, missing = TRUE, 
-             tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 3, len.imp = 5)
+             tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 3, len.imp = 50)
 ```
 
 Get the results using `getJointSimResults` as before. 
