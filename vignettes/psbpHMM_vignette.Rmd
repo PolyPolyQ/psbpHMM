@@ -297,7 +297,7 @@ mubest = modelAveMu(fit = fit_cyclical, zbest1=zbest, ymatrix = ymatrix)
 
 In our simulation study, we compare our proposed joint approach to the models fit independently to each time series. For example, to fit the cyclical model independently to each time series, run the following lines:
 
-```{r, cache = TRUE, eval = FALSE}
+```{r, eval = FALSE, cache = TRUE}
 fit_indep_cyclical = mclapply(1:20, FUN = function(i){
   mciHMM(niter = 100, nburn = 50, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
                       X = list(X[[i]]), z.true = dat$z.true[[i]], lod = list(dat$lod[[i]]), 
@@ -335,10 +335,6 @@ Get the results using `getJointSimResults` as before.
 ```{r, cache = TRUE}
 getJointSimResults(fit_dpmm)
 ```
-
-# Simulation Study Results #
-
-Now we can compare our simulation results for all of the methods we fit. 
 
 
 
