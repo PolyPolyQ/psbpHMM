@@ -187,14 +187,14 @@ The parameter `holdout` is rarely used. It is the same class and dimension of `y
 
 # Examples #
 
-We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. Since our data has missing observations, we specify the tuning parameters for the MH independence sampler. Here we run the model for 1000 iterations with 500 burn-in and save 100 imputations post burn-in. On your own data, be sure to run the model for a long enough chain to reach convergence. To save time, we have provided the results of the model fits in the package, which can be loaded with the data() function. We show the code for fitting the model below, and then show how to load the results. 
+We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. Since our data has missing observations, we specify the tuning parameters for the MH independence sampler. Here we run the model for 100 iterations with 50 burn-in and save 25 imputations post burn-in. On your own data, be sure to run the model for a long enough chain to reach convergence. To save time, we have provided the results of the model fits in the package, which can be loaded with the data() function. We show the code for fitting the model below, and then show how to load the results. 
 
 
 ```{r, eval = FALSE, cache = TRUE}
-fit_no_cov = miHMM(niter = 1000, nburn = 500, y = dat$y, ycomplete = dat$y.complete, 
+fit_no_cov = miHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
       z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, missing = TRUE, 
       tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-      len.imp = 100)
+      len.imp = 25)
 ```
 
 
@@ -226,10 +226,10 @@ q = ncol(X[[1]])
 Now that we have covariates for each subject, we can fit the model. 
 
 ```{r, eval = FALSE, cache = TRUE}
-fit_cyclical = mciHMM(niter = 1000, nburn = 500, y = dat$y, ycomplete = dat$y.complete, 
+fit_cyclical = mciHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
                       X = X, z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, 
                       missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-                      len.imp = 100)
+                      len.imp = 25)
 ```
 
 
@@ -244,10 +244,10 @@ rmlist = c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4)
 ```
 
 ```{r, eval = FALSE, cache = TRUE}
-fit_ss = mciHMM(niter = 1000, nburn = 500, y = dat$y, rmlist = rmlist, ycomplete = dat$y.complete, 
+fit_ss = mciHMM(niter = 100, nburn = 50, y = dat$y, rmlist = rmlist, ycomplete = dat$y.complete, 
              X = X, z.true = dat$z.true, lod = dat$lod, mu.true = dat$mu.true, 
              missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-             len.imp = 100)
+             len.imp = 25)
 ```
 
 ```{r}
@@ -256,7 +256,7 @@ data("fit_ss")
 
 # Analyze Results #
 
-The package provides the function `getJointSimResults` to return the evaluation criteria measures used in our simulation study in [Hoskovec et al.]. This function returns the hamming distance (hamming) and MSE for state-specific means (mu.mse) averaged over the iterations post burn-in. It also returns the MSE for MAR data (mar.mse) and data below the LOD (lod.mse) average over the specified number of imputations post burn-in. We can get the summary for each of the models we fit. 
+The package provides the function `getJointSimResults` to return the evaluation criteria measures used in our simulation study in [Hoskovec et al.]. This function returns the hamming distance (hamming), which is a measure of the distance between the estimated hidden state trajectories and the true hidden state trajectories, and the MSE for state-specific means (mu.mse) averaged over the iterations post burn-in. It also returns the MSE for MAR data (mar.mse) and data below the LOD (lod.mse) average over the specified number of imputations post burn-in. The best performing method will have the smallest hamming distance, MSE for state-specific means, and MSE for imputations. Here we show the summary for each of the models we fit. 
 
 Model (1): no covariates
 
@@ -275,6 +275,7 @@ Model (3): subject-specific cyclical function of time
 ```{r, cache = TRUE}
 getJointSimResults(fit_ss)
 ```
+
 
 We provide some functions for post-processing the results. The following code applies to all three of our models. We will show on `fit_cyclical` only. First, we can calculate the most optimal hidden state trajectory using the draws-based latent structure optimization method described by Dahl (2006). We provide a wrapper function for the `dlso` function from the `salso` R package. 
 
@@ -298,11 +299,11 @@ In our simulation study, we compare our proposed joint approach to the models fi
 
 ```{r, cache = TRUE, eval = FALSE}
 fit_indep_cyclical = mclapply(1:20, FUN = function(i){
-  mciHMM(niter = 1000, nburn = 500, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
+  mciHMM(niter = 100, nburn = 50, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
                       X = list(X[[i]]), z.true = dat$z.true[[i]], lod = list(dat$lod[[i]]), 
                       mu.true = dat$mu.true, missing = TRUE, 
                       tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
-                      len.imp = 100)
+                      len.imp = 25)
 })
 ```
 
@@ -310,19 +311,19 @@ fit_indep_cyclical = mclapply(1:20, FUN = function(i){
 data("fit_indep_cyclical")
 ```
 
-To summarize the results from the independently fit models, use the function `getIndepSimResults`. Here, you must also include the data as a parameter. 
+To summarize the results from the independently fit models, use the function `getIndepSimResults`. Here, you must also include the emission data as a parameter. 
 
 ```{r, cache = TRUE}
 getIndepSimRsults(fit1 = fit_indep_cyclical, y = dat$y)
 ```
 
-Finally, we include in our package a function to fit a truncated Dirichlet process mixture model (DPMM) jointly to multiple time series. Here, `K.start` specifies the maximum number of hiddens states allowed. We set `K.start = 50`. 
+Finally, we include in our package a function to fit a truncated Dirichlet process mixture model (DPMM) jointly to multiple time series. Here, `K.start` specifies the maximum number of hidden states allowed. We set `K.start = 50`. 
 
 ```{r, eval = FALSE, cache = TRUE}
-fit_dpmm = fitDPMM(niter = 1000, nburn = 500, y = dat$y, ycomplete = dat$y.complete, 
+fit_dpmm = fitDPMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complete, 
              K.start = 50, z.true = dat$z.true, lod = dat$lod, 
              mu.true = dat$mu.true, missing = TRUE, 
-             tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 3, len.imp = 100)
+             tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 3, len.imp = 25)
 ```
 
 ```{r}
