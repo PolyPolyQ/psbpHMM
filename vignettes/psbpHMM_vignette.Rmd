@@ -185,9 +185,7 @@ There is an option to use a resolvent kernel to update the parameters of the low
 
 # Examples #
 
-We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. Since our data has missing observations, we specify the tuning parameters for the MH independence sampler. Here we run the model for 200 iterations with 100 burn-in and save 50 imputations post burn-in. On your own data, be sure to run the model for a long enough chain to reach convergence. 
-
-(eval = FALSE)
+We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. Since our data has missing observations, we specify the tuning parameters for the MH independence sampler. Here we run the model for 200 iterations with 100 burn-in and save 50 imputations post burn-in. On your own data, be sure to run the model for a long enough chain to reach convergence. To save time, we have provided the results of the model fits in the package, which can be loaded with the data() function. We show the code for fitting the model below, and then show how to load the results. 
 
 
 ```{r, eval = FALSE, cache = TRUE}
@@ -198,8 +196,8 @@ fit_no_cov = miHMM(niter = 200, nburn = 100, y = dat$y, ycomplete = dat$y.comple
 ```
 
 
-```{r, echo = FALSE}
-fit_no_cov = readRDS("~/Documents/Lauren/Rpackages/psbpHMM/data/fit_no_cov.rds")
+```{r}
+data("fit_no_cov")
 ```
 
 
@@ -233,8 +231,8 @@ fit_cyclical = mciHMM(niter = 200, nburn = 100, y = dat$y, ycomplete = dat$y.com
 ```
 
 
-```{r, echo = FALSE}
-fit_cyclical = readRDS("~/Documents/Lauren/Rpackages/psbpHMM/data/fit_cyclical.rds")
+```{r}
+data("fit_cyclical")
 ```
 
 Last, we fit the model with subject-specific effects of covariates. To do so, we specify the parameter `rmlist` to provide categorical indicators of the repeated time series for each subject. Each integer corresponds to a unique subject. The order of the categorical variables in the vector `rmlist` must be the same as the order of the time series in the lists `X` and `y` data. The following `rmlist` represents 4 unique subjects each with 5 repeated sampling days. 
@@ -250,8 +248,8 @@ fit_ss = mciHMM(niter = 200, nburn = 100, y = dat$y, rmlist = rmlist, ycomplete 
              len.imp = 50)
 ```
 
-```{r, echo = FALSE}
-fit_ss = readRDS("~/Documents/Lauren/Rpackages/psbpHMM/data/fit_ss.rds")
+```{r}
+data("fit_ss")
 ```
 
 # Analyze Results #
