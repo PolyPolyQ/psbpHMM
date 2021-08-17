@@ -8,21 +8,21 @@ mciHMM(
   niter,
   nburn,
   y,
-  rmlist = NULL,
-  ycomplete = NULL,
   X,
-  priors = NULL,
-  K.start = NULL,
-  z.true = NULL,
-  lod = NULL,
-  mu.true = NULL,
+  rmlist = NULL,
   missing = FALSE,
+  lod = NULL,
+  len.imp = NULL,
+  K.start = 12,
+  priors = NULL,
   tau2 = NULL,
   a.tune = NULL,
   b.tune = NULL,
   resK = FALSE,
   eta.star = NULL,
-  len.imp = NULL,
+  z.true = NULL,
+  mu.true = NULL,
+  ycomplete = NULL,
   holdout = NULL
 )
 }
@@ -33,23 +33,19 @@ mciHMM(
 
 \item{y}{list of time series data for each time series}
 
-\item{rmlist}{integer vector identifying repeated time series for the same subject with the same number (e.g. c(1,1,2,2,2,3,3))}
-
-\item{ycomplete}{complete data, if available, for evaluating imputations}
-
 \item{X}{list, matrix of covariates for each time series}
 
-\item{priors}{list of priors}
+\item{rmlist}{integer vector identifying repeated time series for the same subject with the same number (e.g. c(1,1,2,2,2,3,3))}
 
-\item{K.start}{starting number of states}
-
-\item{z.true}{list of true hidden states, if known}
+\item{missing}{logical; if TRUE then the data set y contains missing data, default is FALSE}
 
 \item{lod}{list of lower limits of detection for p exposures for each time series}
 
-\item{mu.true}{matrix of true exposure means for each true state, if known}
+\item{len.imp}{number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter.}
 
-\item{missing}{logical; if TRUE then the data set y contains missing data, default is FALSE}
+\item{K.start}{starting number of hidden states, default is 12}
+
+\item{priors}{list of priors}
 
 \item{tau2}{variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma}
 
@@ -61,7 +57,11 @@ mciHMM(
 
 \item{eta.star}{resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.}
 
-\item{len.imp}{number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter.}
+\item{z.true}{list of true hidden states, if known}
+
+\item{mu.true}{matrix of true exposure means for each true state, if known}
+
+\item{ycomplete}{complete data, if available, for evaluating imputations}
 
 \item{holdout}{list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes}
 }
@@ -84,10 +84,6 @@ a list with components
        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
        \item mar.sse: sum of squared errors of MAR imputations, if ycomplete is given 
        \item lod.sse: sum of squared errors of imputations below LOD, if ycomplete is given 
-       \item mar.bias: mean bias of MAR imputations, if ycomplete is given
-       \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
-       \item mar.sum.bias: sum of bias of MAR imputations, if ycomplete is given
-       \item lod.sum.bias: sum of bias of imputations below LOD, if ycomplete is given
        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
        \item ycomplete: complete data
        \item MH.arate: average MH acceptance rate for lower triangular elements

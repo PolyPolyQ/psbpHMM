@@ -5,21 +5,21 @@
 #' @param niter number of total iterations
 #' @param nburn number of burn-in iterations
 #' @param y list of time series data for each time series 
-#' @param rmlist integer vector identifying repeated time series for the same subject with the same number (e.g. c(1,1,2,2,2,3,3))
-#' @param ycomplete complete data, if available, for evaluating imputations
 #' @param X list, matrix of covariates for each time series
-#' @param priors list of priors
-#' @param K.start starting number of states
-#' @param z.true list of true hidden states, if known
-#' @param lod list of lower limits of detection for p exposures for each time series
-#' @param mu.true matrix of true exposure means for each true state, if known 
+#' @param rmlist integer vector identifying repeated time series for the same subject with the same number (e.g. c(1,1,2,2,2,3,3))
 #' @param missing logical; if TRUE then the data set y contains missing data, default is FALSE
+#' @param lod list of lower limits of detection for p exposures for each time series
+#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
+#' @param K.start starting number of hidden states, default is 12
+#' @param priors list of priors
 #' @param tau2 variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma
 #' @param a.tune shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
 #' @param b.tune rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
 #' @param resK logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma
 #' @param eta.star resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.
-#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
+#' @param z.true list of true hidden states, if known
+#' @param mu.true matrix of true exposure means for each true state, if known 
+#' @param ycomplete complete data, if available, for evaluating imputations
 #' @param holdout list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes
 #'
 #' @importFrom parallel mclapply
@@ -55,12 +55,10 @@
 #' }
 #' @export
 #'
-mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
-                        priors=NULL, K.start=NULL, z.true=NULL, lod=NULL,
-                        mu.true=NULL, missing = FALSE, 
-                        tau2 = NULL, a.tune = NULL, b.tune = NULL,
-                        resK = FALSE, eta.star = NULL, len.imp = NULL,
-                        holdout = NULL){
+mciHMM <- function(niter, nburn, y, X, rmlist=NULL, missing = FALSE, 
+                   lod = NULL, len.imp = NULL, K.start = 12, priors = NULL,
+                   tau2 = NULL, a.tune = NULL, b.tune = NULL, resK = FALSE, eta.star = NULL,
+                   z.true = NULL, mu.true = NULL, ycomplete = NULL, holdout = NULL){
 
 
   # catch problems with parameter input 
@@ -138,9 +136,9 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   # subject specific beta if repeated measures 
   if(!is.null(rmlist)){
     # beta_sk
-    if(is.null(priors$mu.betaS)) priors$mu.betaS <- rep(0, q) 
-    if(is.null(priors$Sigma.betaS)) priors$Sigma.betaS <- diag(q) 
-    if(!is.null(X)) priors$SigInv.betaS <- invMat(priors$Sigma.betaS) 
+    if(is.null(priors$mu.gamma)) priors$mu.gamma <- rep(0, q) 
+    if(is.null(priors$Sigma.gamma)) priors$Sigma.gamma <- diag(q) 
+    if(!is.null(X)) priors$SigInv.betaS <- invMat(priors$Sigma.gamma) 
    # shrinkage prior on random effects
     if(is.null(priors$a.kappa)) priors$a.kappa <- 1 # shape for kap2inv 
     if(is.null(priors$b.kappa)) priors$b.kappa <- 1 # rate for kap2inv 
@@ -223,7 +221,6 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
   z <- list()
   for(i in 1:n){
     K <- K.start
-    if(is.null(K)) K <- 12
     z[[i]] <- sample(1:K, t.max, replace = TRUE)
   }
   
@@ -596,7 +593,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       if(!is.null(rmlist)){
         beta.K.new = list()
         for(i in 1:n.sub){
-          beta.K.new[[i]] = matrix(rmvn(1, priors$mu.betaS, (1/kap2inv)*priors$Sigma.betaS), nrow = q, ncol = 1)
+          beta.K.new[[i]] = matrix(rmvn(1, priors$mu.gamma, (1/kap2inv)*priors$Sigma.gamma), nrow = q, ncol = 1)
         }
         for(i in 1:n){
           beta.sk[[i]][[K+1]] = beta.K.new[[rmlist[i]]]
@@ -855,11 +852,11 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
 
             # update beta.ik
             V.k <- chol2inv(chol(kap2inv*priors$SigInv.betaS + crossprod(X.k, X.k)))
-            m.k <- crossprod(V.k,crossprod( (kap2inv*priors$SigInv.betaS) ,priors$mu.betaS) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
+            m.k <- crossprod(V.k,crossprod( (kap2inv*priors$SigInv.betaS) ,priors$mu.gamma) + crossprod(X.k,w.k - alpha.k - crossprod(t(X.k), beta.k[[k]])))
             return(matrix(rmvn(n = 1, m.k, V.k), nrow = q))
           }else{ 
             # update from prior
-            return(matrix(rmvn(n = 1, mu = priors$mu.betaS, sigma = (1/kap2inv)*priors$Sigma.betaS), nrow = q)) 
+            return(matrix(rmvn(n = 1, mu = priors$mu.gamma, sigma = (1/kap2inv)*priors$Sigma.gamma), nrow = q)) 
           }
         })
       }
@@ -874,7 +871,7 @@ mciHMM <- function(niter, nburn, y, rmlist=NULL, ycomplete=NULL, X,
       ssbetaik <- 0 
       for(i in 1:n.sub){
         for(k in 1:K){
-          ssbetaik = ssbetaik + t(beta.ik[[i]][[k]] - priors$mu.betaS)%*%priors$SigInv.betaS%*%(beta.ik[[i]][[k]] - priors$mu.betaS)
+          ssbetaik = ssbetaik + t(beta.ik[[i]][[k]] - priors$mu.gamma)%*%priors$SigInv.betaS%*%(beta.ik[[i]][[k]] - priors$mu.gamma)
         }
       }
       a.kap <- priors$a.kappa + n.sub*K/2

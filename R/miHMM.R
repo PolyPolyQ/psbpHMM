@@ -3,19 +3,19 @@
 #' @param niter number of total iterations
 #' @param nburn number of burn-in iterations
 #' @param y list of time series data for each time series 
-#' @param ycomplete complete data, if available, for evaluating imputations
-#' @param priors list of priors
-#' @param K.start starting number of states
-#' @param z.true list of true hidden states, if known
-#' @param lod list of lower limits of detection for p exposures for each time series
-#' @param mu.true matrix of true exposure means for each true state, if known 
 #' @param missing logical; if TRUE then the data set y contains missing data, default is FALSE
+#' @param lod list of lower limits of detection for p exposures for each time series
+#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
+#' @param K.start starting number of hidden states, default is 12
+#' @param priors list of priors
 #' @param tau2 variance tuning parameter for normal proposal in MH update of lower triangular elements in decomposition of Sigma
 #' @param a.tune shape tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
 #' @param b.tune rate tuning parameter for inverse gamma proposal in MH update of diagonal elements in decomposition of Sigma
 #' @param resK logical; if TRUE a resolvent kernel is used in MH update for lower triangular elements in decomposition of Sigma
 #' @param eta.star resolvent kernel parameter, must be a real value greater than 1. In the resolvent kernel we take a random draw from the geometric distribution with mean (1-p)/p, eta.star = 1/p.
-#' @param len.imp number of imputations to save. Imputations will be taken at equally spaced iterations between nburn and niter. 
+#' @param z.true list of true hidden states, if known
+#' @param mu.true matrix of true exposure means for each true state, if known 
+#' @param ycomplete complete data, if available, for evaluating imputations
 #' @param holdout list of indicators of missing type in holdout data set, 0 = observed, 1 = MAR, 2 = below LOD, for imputation validation purposes
 #'
 #' @importFrom parallel mclapply
@@ -50,12 +50,10 @@
 #' @export
 #'
 #'
-miHMM <- function(niter, nburn, y, ycomplete=NULL,
-                   priors=NULL, K.start=NULL, z.true=NULL, lod=NULL,
-                   mu.true=NULL, missing = FALSE, 
-                   tau2 = NULL, a.tune = NULL, b.tune = NULL,
-                   resK = FALSE, eta.star = NULL, len.imp = NULL,
-                   holdout = NULL){
+miHMM <- function(niter, nburn, y, missing = FALSE, 
+                  lod = NULL, len.imp = NULL, K.start = 12, priors = NULL,
+                  tau2 = NULL, a.tune = NULL, b.tune = NULL, resK = FALSE, eta.star = NULL,
+                  z.true = NULL, mu.true = NULL, ycomplete = NULL, holdout = NULL){
   
   # catch problems with parameter input 
   if(niter <= nburn) stop("niter must be greater than nburn")

@@ -22,7 +22,6 @@
 #'
 #'
 #' @return list
-#' @export
 #'
 
 fixedK_clustering <- function(niter, nburn, y, ycomplete=NULL,

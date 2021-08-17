@@ -4,7 +4,7 @@
 \alias{simData}
 \title{Simulate data to fit methods in the R package `psbpHMM'}
 \usage{
-simData(n, t.max = 24, K = 6, p = 3, trend = "shared", missingLevel = 0.5)
+simData(n = 20, t.max = 288, K = 6, p = 3, trend = "shared", missingLevel = 0)
 }
 \arguments{
 \item{n}{number of time series}

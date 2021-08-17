@@ -72,8 +72,6 @@ a list with components
        \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
        \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
-       \item mar.bias: mean bias of MAR imputations, if ycomplete is given
-       \item lod.bias: mean bias of imputations below LOD, if ycomplete is given
        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
        \item ycomplete: complete data
        \item MH.arate: average MH acceptance rate for lower triangular elements
