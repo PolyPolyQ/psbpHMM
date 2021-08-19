@@ -1,7 +1,7 @@
 ---
 title: "Package Tutorial for psbpHMM"
 output: rmarkdown::html_vignette
-date: August 17, 2021
+date: August 19, 2021
 author: Lauren Hoskovec
 vignette: >
   %\VignetteIndexEntry{Package Tutorial for psbpHMM}
@@ -78,7 +78,7 @@ The object `dat` is a list with 6 elements: `y` is a list where each element con
 
 We can plot the data to see what it looks like. We plot three exposures for one time series. 
 
-```{r, cache = TRUE, fig.width=8, fig.height=5}
+```{r, cache = TRUE, fig.width=8, fig.height=3}
 par(mfrow = c(1,3))
 plot(1:288, dat$y[[1]][,1], col = dat$z.true[[1]], pch = 19, ylab = "exposure 1", 
      xlab = "time", type = "l", xaxt = "n")
@@ -161,7 +161,7 @@ Model (1) is fit using the function `miHMM` and models (2) and (3) are fit using
 
 The function `mciHMM` takes many parameters. We first describe the most common ones. 
 
-To begin, `niter` is the total number of MCMC iterations and `nburn` is the number of burn-in iterations. `y` is an $n$-element list, where $n$ is the number of subjects. `y` represents the emission data and may contain missing observations denoted by NA (for MAR data) or -Inf (for data below LOD). Each element of `y` is a $T \times p$ matrix, representing data for each subject, where $T$ is the length of each time series and $p$ is the dimension of the data. `X` is an $n$-element list of time-varying covariates for each subject. Each element of `X` is a $T \times q$ matrix where $q$ is the dimension of the covariate data. The ordering of subjects in `X` and `y` must be the same. `rmlist` is a vector of integer labels for the repeated sampling days. Each integer corresponds a subject and an element of `y` and `X`; unique integers represent unique subjects and repeated integers represent repeated sampling days for the same subject. `missing` is logical and specifies whether `y` contains missing observations or not. If missing is true, `lod` is an $n$-element list of lower limits of detection for each of the $p$ exposures and `len.imp` is the number of imputations to save. Imputations will be save at equally spaced iterations post burn-in. `K.start` is the starting number of hidden states; the default is 12. `priors` is the list of prior hyperparameters. The prior options for this model include the following: 
+To begin, `niter` is the total number of MCMC iterations and `nburn` is the number of burn-in iterations. `y` is an $n$-element list, where $n$ is the number of subjects. `y` represents the emission data and may contain missing observations denoted by NA (for MAR data) or -Inf (for data below LOD). Each element of `y` is a $T \times p$ matrix, representing data for each subject, where $T$ is the length of each time series and $p$ is the dimension of the data. `X` is an $n$-element list of time-varying covariates for each subject. Each element of `X` is a $T \times q$ matrix where $q$ is the dimension of the covariate data. The ordering of subjects in `X` and `y` must be the same. `rmlist` is a vector of integer labels for the repeated sampling days. Each integer corresponds a subject and an element of `y` and `X`; unique integers represent unique subjects and repeated integers represent repeated sampling days for the same subject. `missing` is logical and specifies whether `y` contains missing observations or not. If missing is true, `lod` is an $n$-element list of lower limits of detection for each of the $p$ exposures and `len.imp` is the number of imputations to save. Imputations will be saved at equally spaced iterations post burn-in. `K.start` is the starting number of hidden states; the default is 12. `priors` is the list of prior hyperparameters. The prior options for this model include the following: 
 
 |control parameter | model parameter | default value | description      |
 |------------------|-----------------|---------------|------------------|
@@ -193,11 +193,13 @@ Next we describe the parameters for tuning the Metropolis-Hastings independence 
 
 There is an option to use a resolvent kernel to update the parameters of the lower triangular matrix in the decomposition of $\boldsymbol{\Sigma}_k$. The parameter `resK` is a logical parameter; if set to TRUE then the resolvent kernel will be used and `eta.star` specifies the parameter of the geometric distribution for the resolvent kernel. The default value for `eta.star` is 5. 
 
-Finally, we include some parameters used to conduct a simulation study and evaluation of hidden state estimation and imputation. `z.true` is an $n$-element list of true hidden state trajectories for each subject. `mu.true` is a $K_{\text{true}} \times p$ matrix of true state-specific means, where $K_{\text{true}}$ is the true number of hidden states. `ycomplete` is a list of the same dimensions as `y` that contains the true values for the missing observations in `y`. 
+The function also takes optional parameters used to conduct a simulation study and evaluation of hidden state estimation and imputation. `z.true` is an $n$-element list of true hidden state trajectories for each subject. `mu.true` is a $K_{\text{true}} \times p$ matrix of true state-specific means, where $K_{\text{true}}$ is the true number of hidden states. `ycomplete` is a list of the same dimensions as `y` that contains the true values for the missing observations in `y`. 
 
-The parameter `holdout` is rarely used. It is the same class and dimension of `y` but specifies which observations are in the holdout data set for evaluation imputation on an incomplete data set. In `holdout`, 0 denotes the data is observed, 1 denotes MAR, and 2 denotes below LOD. The only reason to specify `holdout` is when evaluating the multiple imputation approach on an incomplete data set; that is, when `ycomplete` still contains missing observations. `holdout` specifies the additional data that was removed for validation, but not the observations that are missing in `ycomplete`. 
+The parameter `holdout` is rarely used. It is the same class and dimension of `y` but specifies which observations are in the holdout data set for evaluating imputation on an incomplete data set. In `holdout`, 0 denotes the data is observed, 1 denotes MAR, and 2 denotes below LOD. The only reason to specify `holdout` is when evaluating the multiple imputation approach on an incomplete data set; that is, when `ycomplete` still contains missing observations. `holdout` specifies the additional data that was removed for validation, but not the observations that are missing in `ycomplete`. 
 
 # Examples #
+
+## Fit Models ##
 
 We demonstrate each model here. First we fit the homogenous PSPB iHMM to the simulated data. Since our data has missing observations, we specify the tuning parameters for the MH independence sampler. Here we run the model for 100 iterations with 50 burn-in and save 25 imputations post burn-in. On your own data, be sure to run the model for a long enough chain to reach convergence. To save time, we have provided the results of the model fits in the package, which can be loaded with the data() function. We show the code for fitting the model below, and then show how to load the results. 
 
@@ -295,7 +297,7 @@ Load the results with the data() function.
 data("fit_ss")
 ```
 
-# Analyze Results #
+## Summarize Results ##
 
 The package provides the function `getJointSimResults` to return the evaluation criteria measures used in our simulation study in [Hoskovec et al.]. This function returns the hamming distance (hamming), which is a measure of the distance between the estimated hidden state trajectories and the true hidden state trajectories, and the MSE for state-specific means (mu.mse) averaged over the iterations post burn-in. It also returns the MSE for MAR data (mar.mse) and data below the LOD (lod.mse) average over the specified number of imputations post burn-in. The best performing method will have the smallest hamming distance, MSE for state-specific means, and MSE for imputations. Here we show the summary for each of the models we fit. 
 
@@ -410,7 +412,7 @@ fit_indep_cyclical = mclapply(1:20, FUN = function(i){
 data("fit_indep_cyclical")
 ```
 
-Similalrly, fit the model with no covaraites independently to each time series by 
+Similarly, fit the model with no covaraites independently to each time series by 
 
 
 ```{r, eval = FALSE, cache = TRUE}
@@ -457,7 +459,14 @@ Get the results from the joint DPMM using `getJointSimResults`.
 getJointSimResults(fit_dpmm)
 ```
 
-## Contact Information ##
+# References #
+
+Hoskovec, L., Koslovsky, M.D., Koehler, K., Peel, J.L., Volckens, J., Good, N., Wilson, A. Infinite Hidden Markov Models for Multiple Multivariate Time Series. In preparation. 
+
+Dahl, D. (2006). Model-Based Clustering for Expression Data via a Dirichlet Process Mixture Model. Bayesian Inference for Gene Expression and Proteomics, 201-218. 
+
+
+# Contact Information #
 
 For questions or comments, please contact the package maintainer Lauren Hoskovec at lvheck@rams.colostate.edu. 
 
