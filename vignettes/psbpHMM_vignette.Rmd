@@ -1,7 +1,7 @@
 ---
 title: "Package Tutorial for psbpHMM"
 output: rmarkdown::html_vignette
-date: August 11, 2021
+date: August 17, 2021
 author: Lauren Hoskovec
 vignette: >
   %\VignetteIndexEntry{Package Tutorial for psbpHMM}
@@ -71,10 +71,17 @@ In these data, 2.5$\%$ of the data are MAR and 2.5$\%$ of the data are below the
 
 The object `dat` is a list with 6 elements: `y` is a list where each element contains an n by p matrix of simulated data for each subject with MAR observations denoted by NA and below LOD observations denoted by -Inf; `y.complete` is a list of the complete data for each subject before missing observations were removed; `z.true` is a list of the true hidden state trajectories for each subject; `K` is the true number of hidden states among all time series; `mu.true` is a K by p matrix of the true state-specific means; and `lod` is a list of the limits of detection for each subject. 
 
-We can plot the data to see what it looks like. We plot one exposure for one time series. 
+We can plot the data to see what it looks like. We plot three exposures for one time series. 
 
 ```{r, cache = TRUE, fig.width=8, fig.height=5}
+par(mfrow = c(1,3))
 plot(1:288, dat$y[[1]][,1], col = dat$z.true[[1]], pch = 19, ylab = "exposure 1", 
+     xlab = "time", type = "l", xaxt = "n")
+axis(side=1, at=seq(0,288+24,24), labels = TRUE)
+plot(1:288, dat$y[[1]][,2], col = dat$z.true[[1]], pch = 19, ylab = "exposure 2", 
+     xlab = "time", type = "l", xaxt = "n")
+axis(side=1, at=seq(0,288+24,24), labels = TRUE)
+plot(1:288, dat$y[[1]][,3], col = dat$z.true[[1]], pch = 19, ylab = "exposure 3", 
      xlab = "time", type = "l", xaxt = "n")
 axis(side=1, at=seq(0,288+24,24), labels = TRUE)
 ```
@@ -277,6 +284,9 @@ getJointSimResults(fit_ss)
 ```
 
 
+From this abbreviated simulation study demonstration, the subject-specific cyclical model best estimated the hidden state trajectories and state-specific means with lowest Hamming distance and MSE for $\mu$. The subject-specific cyclical model also had the lowest MSE for MAR imputations, closely followed by the cyclical model without random effects. The cyclical model without random effects had the lowest MSE for below LOD imputations, followed by the subject-specific model. The model without any covariates performed worst in all measures. 
+
+
 We provide some functions for post-processing the results. The following code applies to all three of our models. We will show on `fit_cyclical` only. First, we can calculate the most optimal hidden state trajectory using the draws-based latent structure optimization method described by Dahl (2006). We provide a wrapper function for the `dlso` function from the `salso` R package. 
 
 ```{r, cache = TRUE}
@@ -295,7 +305,7 @@ mubest = modelAveMu(fit = fit_cyclical, zbest1=zbest, ymatrix = ymatrix)
 
 # Additional Models #
 
-In our simulation study, we compare our proposed joint approach to the models fit independently to each time series. For example, to fit the cyclical model independently to each time series, run the following lines:
+In our simulation study, we compare our proposed joint approach to the models fit independently to each time series. Fit the cyclical model independently to each time series by
 
 ```{r, eval = FALSE, cache = TRUE}
 fit_indep_cyclical = mclapply(1:20, FUN = function(i){
@@ -311,10 +321,32 @@ fit_indep_cyclical = mclapply(1:20, FUN = function(i){
 data("fit_indep_cyclical")
 ```
 
-To summarize the results from the independently fit models, use the function `getIndepSimResults`. Here, you must also include the emission data as a parameter. 
+Similalrly, fit the model with no covaraites independently to each time series by 
+
+
+```{r, eval = FALSE, cache = TRUE}
+fit_indep_nocov = mclapply(1:20, FUN = function(i){
+  miHMM(niter = 100, nburn = 50, y = dat$y[[i]], ycomplete = dat$y.complete[[i]], 
+                      z.true = dat$z.true[[i]], lod = list(dat$lod[[i]]), 
+                      mu.true = dat$mu.true, missing = TRUE, 
+                      tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
+                      len.imp = 25)
+})
+```
+
+
+```{r}
+data("fit_indep_nocov")
+```
+
+To summarize the results from the independently fit models, use the function `getIndepSimResults`. This function averages the hamming distance and MSE for state-specific means and imputations over each of the `n` time series. Here, you must also include the emission data as a parameter. 
 
 ```{r, cache = TRUE}
 getIndepSimRsults(fit1 = fit_indep_cyclical, y = dat$y)
+```
+
+```{r, cache = TRUE}
+getIndepSimRsults(fit1 = fit_indep_nocov, y = dat$y)
 ```
 
 Finally, we include in our package a function to fit a truncated Dirichlet process mixture model (DPMM) jointly to multiple time series. Here, `K.start` specifies the maximum number of hidden states allowed. We set `K.start = 50`. 
@@ -330,12 +362,14 @@ fit_dpmm = fitDPMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complet
 data("fit_dpmm")
 ```
 
-Get the results using `getJointSimResults` as before. 
+Get the results from the joint DPMM using `getJointSimResults`.
 
 ```{r, cache = TRUE}
 getJointSimResults(fit_dpmm)
 ```
 
+## Contact Information ##
 
+For questions or comments, please contact the package maintainer Lauren Hoskovec at lvheck@rams.colostate.edu. 
 
 
