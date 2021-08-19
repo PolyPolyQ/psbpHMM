@@ -2,18 +2,27 @@
 % Please edit documentation in R/modelAveMu.R
 \name{modelAveMu}
 \alias{modelAveMu}
-\title{calculate model averaged estimates of mu}
+\title{Calculate model averaged estimates of state-specific means from a PSBP iHMM fit using the psbpHMM package}
 \usage{
 modelAveMu(fit, zbest1, ymatrix)
 }
 \arguments{
 \item{fit}{object of type "ihmm"}
 
-\item{zbest1}{results from best}
+\item{zbest1}{a list of optimal clustering of hidden states}
+
+\item{ymatrix}{matrix of exposure data for all time series, with n*T rows and p columns}
 }
 \value{
-model averaged estimates of mu, state-specific means
+a list with components 
+\itemize{
+   \item mu_ma: posterior mean of model-averaged state-specific means
+   \item mu_lwr: .025 quantile of posterior distribution of model-averaged state-specific means
+   \item mu_upr: .975 quantile of posterior distribution of model-averaged state-specific means
+   \item exp_lwr: minimum empirical data for each exposure within each state 
+   \item exp_upr: maximum empirical data for each exposure within each state 
+}
 }
 \description{
-calculate model averaged estimates of mu
+Calculate model averaged estimates of state-specific means from a PSBP iHMM fit using the psbpHMM package
 }

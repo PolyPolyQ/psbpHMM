@@ -1,9 +1,17 @@
-#' calculate model averaged estimates of mu 
+#' Calculate model averaged estimates of state-specific means from a PSBP iHMM fit using the psbpHMM package
 #'
 #' @param fit object of type "ihmm"
-#' @param zbest1 results from best 
+#' @param zbest1 a list of optimal clustering of hidden states
+#' @param ymatrix matrix of exposure data for all time series, with n*T rows and p columns 
 #'
-#' @return model averaged estimates of mu, state-specific means
+#' @return a list with components 
+#' \itemize{
+#'    \item mu_ma: posterior mean of model-averaged state-specific means
+#'    \item mu_lwr: .025 quantile of posterior distribution of model-averaged state-specific means
+#'    \item mu_upr: .975 quantile of posterior distribution of model-averaged state-specific means
+#'    \item exp_lwr: minimum empirical data for each exposure within each state 
+#'    \item exp_upr: maximum empirical data for each exposure within each state 
+#' } 
 #' @export
 #'
 #' 

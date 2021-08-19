@@ -1,9 +1,9 @@
-#' Identify best clustering of states in PSBP-iHMM model 
+#' Identify best clustering of states in PSBP-iHMM model based on dslo method in salso package 
 #'
 #' @param ihmm object of type "ihmm"
 #'
 #' @importFrom salso dlso
-#' @return best clustering of z
+#' @return "best" clustering of hidden states z
 #' @export
 #'
 #' 

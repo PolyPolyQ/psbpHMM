@@ -23,7 +23,8 @@ mciHMM | fit covariate-dependent infinite hidden Markov model to one or more tim
 getJointSimResults | summarize simulation output from jointly fit models |
 getIndepSimResults | summarize simulation output from independently fit models |
 |fitDPMM | fit Dirichlet process mixture model to one or more time series |
-
+|dlso_wrapper| wrapper function for dlso clustering algorithm in salso R package [Dahl. 2006]|
+|modelAvemu| return model-averaged estimates of state-specific means from PSPB iHMM model|
 
 
 In this vignette, we show how to install the package, simulate data, fit three versions of our proposed approach, and summarize the MCMC output. The package contains everything needed to conduct a simulation study similar to that in [Hoskovec et al.]. 
@@ -64,7 +65,11 @@ Here we simulate a data set with 5$\%$ missing observations.
 
 ```{r, cache=TRUE}
 set.seed(42412)
-dat = simData(n=20, t.max = 288, K = 6, p = 3, trend = "shared", missingLevel = 0.05)
+n=20
+p=3
+t.max=288
+K=6
+dat = simData(n, t.max, K, p, trend = "shared", missingLevel = 0.05)
 ```
 
 In these data, 2.5$\%$ of the data are MAR and 2.5$\%$ of the data are below the LOD. Hence, the fixed and known LOD is set at the 0.025 quantile of the pooled data set. 
@@ -204,17 +209,42 @@ fit_no_cov = miHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.complet
       len.imp = 25)
 ```
 
+The function `miHMM` returns an object of type "ihmm", which is a list with the following components: 
+
+|name              |         description |
+|------------------|---------------------|
+|z.save | list of estimated hidden states for each time series at each iteration |
+|K.save | list of estimated number of hidden states for each time series at each iteration |
+|ymar | matrix with `len.imp` rows of imputed values for MAR data | 
+|ylod | matrix with `len.imp` rows of imputed values fro data below LOD |
+|beta.save | list of posterior estimates of beta_k, state-specific regression coefficients in PSBP, NULL in miHMM |
+|gamma.save | list of posterior estimates of gamma_ik, state-specific subject-specific regression coefficients in PSBP, NULL in miHMM |
+|mu.save | list of posterior estimates of mu_k, state-specific means 
+|hamming | posterior hamming distance between true and estimated states, if z.true is given
+|mu.mse | mean squared error for estimated state-specific means, if mu.true is given
+|mu.sse | sum of squared errors for estimated state-specific means, if mu.true is given
+|mar.mse | mean squared error of MAR imputations, if ycomplete is given 
+|lod.mse | mean squared error of imputations below LOD, if ycomplete is given 
+|mar.sse | sum of squared errors of MAR imputations, if ycomplete is given 
+|lod.sse | sum of squared errors of imputations below LOD, if ycomplete is given 
+|mismat | list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
+|ycomplete | complete data
+|MH.arate | MH acceptance rate for lower triangular elements
+|MH.lamrate | MH acceptance rate for diagonal elements  
+
+Load the object using the data() function. 
 
 ```{r}
 data("fit_no_cov")
 ```
-
 
 First, let's look at the MH acceptance rates. We want to set the tuning parameters so that the MH acceptances rates are between 0.1 and 0.4. 
 
 ```{r, cache = TRUE}
 fit_no_cov$MH.arate; fit_no_cov$MH.lamrate
 ```
+
+Looks good. We'll return to summarizing the results of the model fit later. 
 
 Next, we fit the covariate-dependent PSBP. To incorporate covariates, we simulate cyclical temporal trends via a harmonic function of time. We will assume the time points for each time series all correspond to the same time of day, though they may take place on different days. Hence, the harmonic function of time will be identical for all time series. The current version of this model only permits time-varying covariates. 
 
@@ -239,12 +269,13 @@ fit_cyclical = mciHMM(niter = 100, nburn = 50, y = dat$y, ycomplete = dat$y.comp
                       len.imp = 25)
 ```
 
+The function `mciHMM` also returns an object of type "ihmm". Load it with the data() function.
 
 ```{r}
 data("fit_cyclical")
 ```
 
-Last, we fit the model with subject-specific effects of covariates. To do so, we specify the parameter `rmlist` to provide categorical indicators of the repeated time series for each subject. Each integer corresponds to a unique subject. The order of the categorical variables in the vector `rmlist` must be the same as the order of the time series in the lists `X` and `y` data. The following `rmlist` represents 4 unique subjects each with 5 repeated sampling days. 
+Last, we fit the model with subject-specific effects of covariates. To do so, we specify the parameter `rmlist` to provide categorical indicators of the repeated time series for each subject. Each integer corresponds to a unique subject. The order of the categorical variables in the vector `rmlist` must be the same as the order of the time series in the lists `X` and `y` data. The following (arbitrarily constructed) `rmlist` represents 4 unique subjects each with 5 repeated sampling days. 
 
 ```{r}
 rmlist = c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4)
@@ -256,6 +287,9 @@ fit_ss = mciHMM(niter = 100, nburn = 50, y = dat$y, rmlist = rmlist, ycomplete =
              missing = TRUE, tau2 = 0.25, a.tune = 10, b.tune = 1, resK = TRUE, eta.star = 5, 
              len.imp = 25)
 ```
+
+Load the results with the data() function.
+
 
 ```{r}
 data("fit_ss")
@@ -286,14 +320,19 @@ getJointSimResults(fit_ss)
 
 From this abbreviated simulation study demonstration, the subject-specific cyclical model best estimated the hidden state trajectories and state-specific means with lowest Hamming distance and MSE for $\mu$. The subject-specific cyclical model also had the lowest MSE for MAR imputations, closely followed by the cyclical model without random effects. The cyclical model without random effects had the lowest MSE for below LOD imputations, followed by the subject-specific model. The model without any covariates performed worst in all measures. 
 
-
-We provide some functions for post-processing the results. The following code applies to all three of our models. We will show on `fit_cyclical` only. First, we can calculate the most optimal hidden state trajectory using the draws-based latent structure optimization method described by Dahl (2006). We provide a wrapper function for the `dlso` function from the `salso` R package. 
+We also provide functions to post-process the results. The following code applies to all three of our models. We will show on `fit_cyclical` only. First, we can calculate the most optimal hidden state trajectory using the draws-based latent structure optimization method described by Dahl (2006). We provide a wrapper function for the `dlso` function from the `salso` R package. 
 
 ```{r, cache = TRUE}
 zbest = dlso_wrapper(fit_cyclical)
 ```
 
-Given the most optimal hidden state trajectories, we can calculate model-averaged estimates of the state-specific means with `modelAvemu`. This function must take in the exposure data as a matrix so we turn the list into a matrix here. 
+The function `dlso_wrapper` returns a list where each element represents a subject and contains the vector of estimated hidden state trajectories where each unqiue state is identified via a unique integer from 1 to the total number of clusters estimated. For example, subject one's estimated hidden state trajectory is: 
+
+```{r}
+zbest[[1]]
+```
+
+Next, given the most optimal hidden state trajectories, we can calculate model-averaged estimates of the state-specific means with `modelAvemu`. This function must take in the exposure data as a matrix so we transform the list into the correct matrix here. 
 
 ```{r, cache = TRUE}
 ymatrix=NULL
@@ -302,6 +341,56 @@ for(i in 1:n){
 }
 mubest = modelAveMu(fit = fit_cyclical, zbest1=zbest, ymatrix = ymatrix)
 ```
+
+We provide code to visualize the model-averaged exposure means. Install the packages ggplot2 and viridisLite if they are not already installed. 
+
+```{r}
+library(ggplot2)
+library(viridisLite)
+```
+
+The following code plots the model-averaged state-specific means including the posterior mean and 95$\%$ credible interval for each exposure. 
+
+```{r, fig.width=8, fig.height=5}
+mmean <- matrix(unlist(mubest$mu_ma), ncol = p, byrow = TRUE)
+Kmax = max(unlist(zbest))
+
+for(k in 1:Kmax){
+  whoBest <- which(unlist(zbest)==k) # the time points assigned to k in the best clustering
+  ybest = as.numeric(ymatrix[whoBest, ])
+}
+
+mlwr <- matrix(unlist(mubest$mu_lwr), ncol = p, byrow = TRUE)
+mupr <- matrix(unlist(mubest$mu_upr), ncol = p, byrow = TRUE)
+col = viridis(n=Kmax)
+
+mdat1 = data.frame(x = (1:Kmax)-0.2, y = mmean[,1], lwr = mlwr[,1], upr = mupr[,1], col = col)
+mdat2 = data.frame(x = (1:Kmax), y = mmean[,2], lwr = mlwr[,2], upr = mupr[,2], col = col)
+mdat3 = data.frame(x = (1:Kmax)+0.2, y = mmean[,3], lwr = mlwr[,3], upr = mupr[,3], col = col)
+
+ggplot() + theme(legend.position = "none") + 
+  scale_x_discrete(name = "Hidden States", limits = factor(1:Kmax), breaks = 1:Kmax) + 
+  scale_y_continuous(name = "Model Averaged Exposure Means") + 
+  geom_point(data = mdat1, mapping = aes(x = x, y = y, colour = col), size = 4, shape = 15) + 
+  geom_errorbar(data = mdat1, mapping = aes(x = x, ymin = lwr, ymax = upr, colour = col), width = .4) +
+  geom_point(data = mdat2, mapping = aes(x = x, y = y, colour = col), size = 4, shape = 16) + 
+  geom_errorbar(data = mdat2, mapping = aes(x = x, ymin = lwr, ymax = upr, colour = col), width = .4) +
+  geom_point(data = mdat3, mapping = aes(x = x, y = y, colour = col), size = 4, shape = 17) + 
+  geom_errorbar(data = mdat3, mapping = aes(x = x, ymin = lwr, ymax = upr, colour = col), width = .4) +
+  theme(text = element_text(size = 15), 
+        axis.text.x = element_text(size = 15, angle = 0, hjust = 1), 
+        axis.text.y = element_text(size = 15, angle = 0, hjust = 1), 
+        plot.title = element_text(size = 15)) 
+
+```
+
+Another feature of the hidden states that may be of interest is how many time points were assigned to each state. We can get this information with the table() function in base R.
+
+```{r}
+table(unlist(zbest))
+```
+
+Additional details on how to make inference on the hidden states can be found in Section 4 in [Hoskovec et al.]. 
 
 # Additional Models #
 

@@ -2,7 +2,6 @@
 #'
 #' @param z list of states
 #'
-#' @export 
 #' @return list of categorical indicators re-labeled from 1 to the number of unique clusters
 
 recode_Z <- function(z){

@@ -2,7 +2,7 @@
 % Please edit documentation in R/dlso_wrapper.R
 \name{dlso_wrapper}
 \alias{dlso_wrapper}
-\title{Identify best clustering of states in PSBP-iHMM model}
+\title{Identify best clustering of states in PSBP-iHMM model based on dslo method in salso package}
 \usage{
 dlso_wrapper(ihmm)
 }
@@ -10,8 +10,8 @@ dlso_wrapper(ihmm)
 \item{ihmm}{object of type "ihmm"}
 }
 \value{
-best clustering of z
+"best" clustering of hidden states z
 }
 \description{
-Identify best clustering of states in PSBP-iHMM model
+Identify best clustering of states in PSBP-iHMM model based on dslo method in salso package
 }

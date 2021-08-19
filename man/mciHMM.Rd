@@ -72,10 +72,10 @@ a list with components
 \itemize{
        \item z.save: list of estimated hidden states for each time series at each iteration
        \item K.save: list of estimated number of hidden states for each time series at each iteration
-       \item ymar: matrix of imputed values for MAR data, number of rows equal to len.imp
-       \item ylod: matrix of imputed values for data below LOD, number of rows equal to len.imp
+       \item ymar: matrix with len.imp rows of imputed values for MAR data
+       \item ylod: matrix with len.imp rows of imputed values for data below LOD
        \item beta.save: list of posterior estimates of beta_k, state-specific regression coefficients in PSBP 
-       \item beta_rm.save: list of posterior estimates of beta_sk, state-specific subject-specific regression coefficients in PSBP
+       \item gamma.save: list of posterior estimates of gamma_ik, state-specific subject-specific regression coefficients in PSBP
        \item mu.save: list of posterior estimates of mu_k, state-specific means 
        \item hamming: posterior hamming distance between true and estimated states, if z.true is given
        \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
@@ -85,9 +85,9 @@ a list with components
        \item mar.sse: sum of squared errors of MAR imputations, if ycomplete is given 
        \item lod.sse: sum of squared errors of imputations below LOD, if ycomplete is given 
        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
-       \item ycomplete: complete data
-       \item MH.arate: average MH acceptance rate for lower triangular elements
-       \item MH.lamrate: average MH acceptance rate for diagonal elements 
+       \item ycomplete: list of complete data
+       \item MH.arate: MH acceptance rate for lower triangular elements
+       \item MH.lamrate: MH acceptance rate for diagonal elements 
 }
 }
 \description{
