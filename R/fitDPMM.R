@@ -33,6 +33,7 @@
 #' \itemize{
 #'        \item z.save: list of estimated hidden states for each time series at each iteration
 #'        \item K.save: list of estimated number of hidden states for each time series at each iteration
+#'        \item mu.save: list of posterior estimates of mu_k, state-specific means 
 #'        \item ymar: matrix of imputed values for MAR data, number of rows equal to len.imp
 #'        \item ylod: matrix of imputed values for data below LOD, number of rows equal to len.imp
 #'        \item hamming: posterior hamming distance between true and estimated states, if z.true is given
@@ -304,13 +305,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
     mar.mse <- numeric()
     lod.mse <- numeric()
-    mar.sse <- numeric()
-    lod.sse <- numeric()
     miss.mse <- numeric()
-    mar.bias <- numeric()
-    lod.bias <- numeric()
-    mar.sum.bias <- numeric()
-    lod.sum.bias <- numeric()
     s.imp <- 1
   }else{
     imputes = 0
@@ -318,13 +313,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- NULL
     mar.mse <- NULL
     lod.mse <- NULL
-    mar.sse <- NULL
-    lod.sse <- NULL
     miss.mse <- NULL
-    mar.bias <- NULL
-    lod.bias <- NULL
-    mar.sum.bias <- NULL
-    lod.sum.bias <- NULL
     s.imp <- NULL
   }
   
@@ -617,7 +606,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     ### Store Results ###
     #####################
     
-    if(s>=nburn){
+    if(s>nburn){
       
       ## Hamming distance ##
       if(!is.null(unlist(z.true))){
@@ -626,6 +615,8 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
       }else{
         ham <- NULL
       }    
+      
+      mu.save[[s.save]] <- mu
       
       ## MSE for mu ##
       if(!is.null(mu.true)){
@@ -663,7 +654,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   }
   
   
-  list1 <- list(z.save = z.save, K.save = K.save,
+  list1 <- list(z.save = z.save, K.save = K.save, mu.save = mu.save,
                 ymar = y.mar.save, ylod = y.lod.save,
                 hamming = ham, mu.mse = mu.mse, mar.mse = mar.mse, 
                 lod.mse = lod.mse, 
