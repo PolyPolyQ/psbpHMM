@@ -2,7 +2,7 @@
 title: "Package Tutorial for psbpHMM"
 output: rmarkdown::html_vignette
 date: August 19, 2021
-author: Lauren Hoskovec
+author: Lauren Hoskovec, Ander Wilson, and Matthew Koslovsky 
 vignette: >
   %\VignetteIndexEntry{Package Tutorial for psbpHMM}
   %\VignetteEngine{knitr::rmarkdown}
@@ -25,7 +25,6 @@ getIndepSimResults | summarize simulation output from independently fit models |
 |fitDPMM | fit Dirichlet process mixture model to one or more time series |
 |dlso_wrapper| wrapper function for dlso clustering algorithm in salso R package [Dahl. 2006]|
 |modelAvemu| return model-averaged estimates of state-specific means from PSPB iHMM model|
-
 
 In this vignette, we show how to install the package, simulate data, fit three versions of our proposed approach, and summarize the MCMC output. The package contains everything needed to conduct a simulation study similar to that in [Hoskovec et al.]. 
 
