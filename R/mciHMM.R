@@ -48,6 +48,10 @@
 #'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
 #'        \item mar.sse: sum of squared errors of MAR imputations, if ycomplete is given 
 #'        \item lod.sse: sum of squared errors of imputations below LOD, if ycomplete is given 
+#'        \item mar.sum.bias: sum of bias for MAR imputations 
+#'        \item lod.sum.bias: sum of bias for below LOD imputations 
+#'        \item mar.bias: mean bias for MAR imputations 
+#'        \item lod.bias: mean bias for below LOD imputations 
 #'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
 #'        \item ycomplete: list of complete data
 #'        \item MH.arate: MH acceptance rate for lower triangular elements
@@ -218,6 +222,8 @@ mciHMM <- function(niter, nburn, y, X, rmlist=NULL, missing = FALSE,
   ## Starting Values ##  
   #####################
   
+  if(is.null(K.start)) K.start = 12
+  
   z <- list()
   for(i in 1:n){
     K <- K.start
@@ -381,10 +387,11 @@ mciHMM <- function(niter, nburn, y, X, rmlist=NULL, missing = FALSE,
   ###############
   ### Sampler ###
   ###############
+  
   #start.time = Sys.time()
   for(s in 1:niter){
     
-    #if (s%%100==0) print(paste("iteration", s, " number of states =", K))
+    if (s%%100==0) print(paste("iteration", s, " number of states =", K))
 
     z.prev <- list()
     z.prev <- mclapply(1:n, FUN=function(i) return(z[[i]]))
@@ -1024,6 +1031,8 @@ list1 <- list(z.save = z.save, K.save = K.save,
               mu.sse = mu.sse,
               mar.mse = mar.mse, lod.mse = lod.mse,
               mar.sse = mar.sse, lod.sse = lod.sse,
+              mar.sum.bias = mar.sum.bias, lod.sum.bias = lod.sum.bias,
+              mar.bias = mar.bias, lod.bias = lod.bias,
               mismat = mismat, ycomplete = ycomplete,
               MH.arate = MH.a/(length(al)*sum(K.save)),
               MH.lamrate = MH.lam/(p*sum(K.save)))

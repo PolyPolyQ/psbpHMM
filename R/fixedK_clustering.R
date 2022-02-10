@@ -220,6 +220,8 @@ fixedK_clustering <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
     mar.mse <- numeric()
     lod.mse <- numeric()
+    mar.bias <- numeric()
+    lod.bias <- numeric()
     s.imp <- 1
   }else{
     imputes = 0
@@ -227,6 +229,8 @@ fixedK_clustering <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- NULL
     mar.mse <- NULL
     lod.mse <- NULL
+    mar.bias <- NULL
+    lod.bias <- NULL
     s.imp <- NULL
   }
   
@@ -508,6 +512,10 @@ fixedK_clustering <- function(niter, nburn, y, ycomplete=NULL,
           # separate by the types of missing MSE
           mar.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(holdout)==1)] - unlist(y)[which(unlist(holdout)==1)])^2)
           lod.mse[s.imp] <- mean((unlist(ycomplete)[which(unlist(holdout)==2)] - unlist(y)[which(unlist(holdout)==2)])^2)
+          
+          # bias 
+          mar.bias[s.imp] <- mean((unlist(y)[which(unlist(holdout)==1)] - unlist(ycomplete)[which(unlist(holdout)==1)]))
+          lod.bias[s.imp] <- mean((unlist(y)[which(unlist(holdout)==2)] - unlist(ycomplete)[which(unlist(holdout)==2)]))
 
         }
         s.imp <- s.imp+1
@@ -518,8 +526,8 @@ fixedK_clustering <- function(niter, nburn, y, ycomplete=NULL,
   
   
   list1 <- list(ymar = y.mar.save, ylod = y.lod.save,
-                mar.mse = mar.mse, 
-                lod.mse = lod.mse, 
+                mar.mse = mar.mse, mar.bias = mar.bias,
+                lod.mse = lod.mse, lod.bias = lod.bias,
                 mismat = mismat, ycomplete = ycomplete,
                 MH.arate = MH.a/(length(al)*sum(K.true)),
                 MH.lamrate = MH.lam/(p*sum(K.true)))

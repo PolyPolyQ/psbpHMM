@@ -40,6 +40,8 @@
 #'        \item mu.mse: mean squared error for estimated state-specific means, if mu.true is given
 #'        \item mar.mse: mean squared error of MAR imputations, if ycomplete is given 
 #'        \item lod.mse: mean squared error of imputations below LOD, if ycomplete is given 
+#'        \item mar.bias: mean bias for MAR imputations 
+#'        \item lod.bias: mean bias for below LOD imputations 
 #'        \item mismat: list, each element is a matrix indicating types of missing data for each time series, 0 = complete, 1 = MAR, 2 = below LOD
 #'        \item ycomplete: complete data
 #'        \item MH.arate: average MH acceptance rate for lower triangular elements
@@ -305,6 +307,8 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- matrix(NA, len.imp, length(which(unlist(mismat)==2)))
     mar.mse <- numeric()
     lod.mse <- numeric()
+    mar.bias = numeric()
+    lod.bias = numeric()
     miss.mse <- numeric()
     s.imp <- 1
   }else{
@@ -313,6 +317,8 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
     y.lod.save <- NULL
     mar.mse <- NULL
     lod.mse <- NULL
+    mar.bias = NULL
+    lod.bias = NULL
     miss.mse <- NULL
     s.imp <- NULL
   }
@@ -631,7 +637,8 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
         mu.mse <- NULL
       }
       z.save[[s.save]] <- z
-      K.save[s.save] <- K 
+      K.save[s.save] <- length(unique(unlist(z)))
+      #K.save[s.save] <- K 
       
       if(s%in%imputes){
         # imputed values for complete data sets 
@@ -657,7 +664,7 @@ fitDPMM <- function(niter, nburn, y, ycomplete=NULL,
   list1 <- list(z.save = z.save, K.save = K.save, mu.save = mu.save,
                 ymar = y.mar.save, ylod = y.lod.save,
                 hamming = ham, mu.mse = mu.mse, mar.mse = mar.mse, 
-                lod.mse = lod.mse, 
+                lod.mse = lod.mse, mar.bias = mar.bias, lod.bias = lod.bias,
                 mismat = mismat, ycomplete = ycomplete,
                 MH.arate = MH.a/(length(al)*sum(K.save)),
                 MH.lamrate = MH.lam/(p*sum(K.save)))

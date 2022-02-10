@@ -17,7 +17,7 @@ The R package psbpHMM provides several functions for fitting covariate-dependent
 
 |function          |         brief description of usage |
 |------------------|------------------------------------|
-simData | simulate data to reproduce simulation in [Hoskovec et al.] | 
+simData | simulate data | 
 miHMM | fit homogeneous infinite hidden Markov model to one or more time series | 
 mciHMM | fit covariate-dependent infinite hidden Markov model to one or more time series |
 getJointSimResults | summarize simulation output from jointly fit models |
@@ -56,9 +56,9 @@ library(psbpHMM)
 
 # Simulate Data #
 
-The package contains functions to simulate data similar to the simulation study in [Hoskovec et al.], using the `simData` function. By default, `simData` generates 3-dimensional multivariate time series for 20 subjects, where each subject has 288 time points, 6 true clusters, and shared temporal patterns. 
+The package contains functions to simulate data for evaluating the method, using the `simData` function. By default, `simData` generates 3-dimensional multivariate time series for 20 subjects, where each subject has 288 time points, 6 true clusters, and shared temporal patterns. 
 
-The `simData` function takes in the following parameters: `n` is the number of time series, `t.max` is the length of each time series, `p` is the dimension of the data, and `K` is the true number of hidden states shared among all time series. The parameter `trend` allows us to specify shared or distinct temporal trends among the time series, and the parameter `missingLevel` allows us to specify the proportion of missing data, which is split evenly between missing at random (MAR) and below the limit of detection (LOD). Based on these parameters, data are simulated as described in Section 3 in [Hoskovec et al.]. 
+The `simData` function takes in the following parameters: `n` is the number of time series, `t.max` is the length of each time series, `p` is the dimension of the data, and `K` is the true number of hidden states shared among all time series. The parameter `trend` allows us to specify shared or distinct temporal trends among the time series, and the parameter `missingLevel` allows us to specify the proportion of missing data, which is split evenly between missing at random (MAR) and below the limit of detection (LOD). Based on these parameters, data are simulated similar to that described in Section 4 in [Hoskovec et al.]. 
 
 Here we simulate a data set with 5$\%$ missing observations. 
 
@@ -149,7 +149,7 @@ $$
 m_\alpha & \sim & \text{N}(m_0, v_0) \\
 v_\alpha^{-1} & \sim &  \text{Gamma}(a_2, b_2) \\
 \boldsymbol{\beta}_k & \sim & \text{N}(\boldsymbol{\mu}_\beta, \boldsymbol{\Sigma}_\beta) \\
-\boldsymbol{\gamma}_{ik} & \sim & \text{N}(\boldsymbol{\mu}_\gamma, \kappa^2 \boldsymbol{\Sigma}_\gamma) \\
+\boldsymbol{\gamma}_{ik}|\kappa^2 & \sim & \text{N}(\boldsymbol{\mu}_\gamma, \kappa^2 \boldsymbol{\Sigma}_\gamma) \\
 \kappa^{-2} & \sim & \text{Gamma}(\alpha_\kappa,\beta_\kappa).
 \end{eqnarray}
 $$
@@ -160,14 +160,14 @@ Model (1) is fit using the function `miHMM` and models (2) and (3) are fit using
 
 The function `mciHMM` takes many parameters. We first describe the most common ones. 
 
-To begin, `niter` is the total number of MCMC iterations and `nburn` is the number of burn-in iterations. `y` is an $n$-element list, where $n$ is the number of subjects. `y` represents the emission data and may contain missing observations denoted by NA (for MAR data) or -Inf (for data below LOD). Each element of `y` is a $T \times p$ matrix, representing data for each subject, where $T$ is the length of each time series and $p$ is the dimension of the data. For proper implementation, `y` data need to be scaled to have mean 0 and variance 1. `X` is an $n$-element list of time-varying covariates for each subject. Each element of `X` is a $T \times q$ matrix where $q$ is the dimension of the covariate data. The ordering of subjects in `X` and `y` must be the same. `rmlist` is a vector of integer labels for the repeated sampling days. Each integer corresponds a subject and an element of `y` and `X`; unique integers represent unique subjects and repeated integers represent repeated sampling days for the same subject. `missing` is logical and specifies whether `y` contains missing observations or not. If missing is true, `lod` is an $n$-element list of lower limits of detection for each of the $p$ exposures and `len.imp` is the number of imputations to save. Imputations will be saved at equally spaced iterations post burn-in. `K.start` is the starting number of hidden states; the default is 12. `priors` is the list of prior hyperparameters. The prior options for this model include the following: 
+To begin, `niter` is the total number of MCMC iterations and `nburn` is the number of burn-in iterations. `y` is an $n$-element list, where $n$ is the number of subjects. `y` represents the emission data and may contain missing observations denoted by NA (for MAR data) or -Inf (for data below LOD). Each element of `y` is a $T \times p$ matrix, representing data for each subject, where $T$ is the length of each time series and $p$ is the dimension of the exposure data. For proper implementation, `y` data need to be scaled to have mean 0 and variance 1. `X` is an $n$-element list of time-varying covariates for each subject. Each element of `X` is a $T \times q$ matrix where $q$ is the dimension of the covariate data. The ordering of subjects in `X` and `y` must be the same. `rmlist` is a vector of integer labels for the repeated sampling days. Each integer corresponds a subject and an element of `y` and `X`; unique integers represent unique subjects and repeated integers represent repeated sampling days for the same subject. `missing` is logical and specifies whether `y` contains missing observations or not. If missing is true, `lod` is an $n$-element list of lower limits of detection for each of the $p$ exposures and `len.imp` is the number of imputations to save. Imputations will be saved at equally spaced iterations post burn-in. `K.start` is the starting number of hidden states; the default is 12. `priors` is the list of prior hyperparameters. The prior options for this model include the following: 
 
 |control parameter | model parameter | default value | description      |
 |------------------|-----------------|---------------|------------------|
 |mu0         |$\boldsymbol{\mu}_0$  | 0             |mean parameter for Normal prior on $\boldsymbol{\mu}_k$ |
-|lambda| $\lambda$ | 0 | scale parameter for Normal prior on $\boldsymbol{\mu}_k$  | 
-|nu|$\nu$ |  1 |  degrees of freedom for Inverse Wishart prior on $\boldsymbol{\Sigma}_k$  |
-|R | $\mathbf{R} | $\mathbf{I}_p$ | matrix parameter for Inverse Wishart prior on $\boldsymbol{\Sigma}_k$ |
+|lambda| $\lambda$ | 10 | scale parameter on covariance for Normal prior on $\boldsymbol{\mu}_k$  | 
+|nu|$\nu$ |  $p+2$ |  degrees of freedom for Inverse Wishart prior on $\boldsymbol{\Sigma}_k$  |
+|R | $\mathbf{R}$ | $\mathbf{I}_p$ | matrix parameter for Inverse Wishart prior on $\boldsymbol{\Sigma}_k$ |
 |mu.alpha |$\mu_\alpha$   | 0       |mean parameter for Normal priors on $\alpha_{jk$, $j \neq k$|
 |a1| $a_1$ | 1 |  shape parameter for gamma prior on $\sigma_\alpha^{-2}$ |
 |b1|$b_1$  |  1 |   rate parameter for gamma prior on $\phi_2^{-2}$ |
