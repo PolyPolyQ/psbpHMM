@@ -217,7 +217,7 @@ miHMM <- function(niter, nburn, y, missing = FALSE,
       # we reparameterize Sigma and model L and D instead 
       vj0 <- sapply(1:p, FUN = function(j) priors$nu + j - p); vj0 # fixed for each k 
       deltaj0 <- rep(1,p); deltaj0 # fixed for each k 
-      lams[[k]] <- 1/rgamma(3, vj0, rate = deltaj0)
+      lams[[k]] <- 1/rgamma(7, vj0, rate = deltaj0)
       D[[k]] <- diag(lams[[k]])
       al.list <- list()
       for(j in 2:p){
@@ -515,7 +515,7 @@ miHMM <- function(niter, nburn, y, missing = FALSE,
     if(any(unlist(z)>K)){
       
       if(algorithm == "MH"){
-        lamsNew <- 1/rgamma(3, vj0, rate = deltaj0); lamsNew
+        lamsNew <- 1/rgamma(7, vj0, rate = deltaj0); lamsNew
         DNew <- diag(lamsNew); DNew
         al.listNew <- list()
         for(j in 2:p){
